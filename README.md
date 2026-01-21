@@ -98,6 +98,47 @@ pnpm check-types
 pnpm format
 ```
 
+## 部署与运行（Docker Compose）
+
+该项目前端生产环境默认请求基路径为 `'/api'`，因此推荐使用本仓库提供的 **Nginx 反向代理** 统一对外暴露一个入口（同时处理 SSE 不缓冲）。
+
+### 1) 准备环境变量
+
+在项目根目录创建 `.env`（或在 shell 中导出环境变量）：
+
+```bash
+OPENAI_MODEL=qwen3-32b
+OPENAI_BASE_URL=https://hk.uniapi.io/v1
+OPENAI_API_KEY=xxxxxx
+```
+
+### 2) 构建并启动
+
+```bash
+docker compose up --build
+```
+
+### 3) 访问地址
+
+- Web：`http://localhost:8080`
+- API（直连）：`http://localhost:8000`（Swagger：`http://localhost:8000/docs`）
+- API（经 Nginx）：`http://localhost:8080/api/*`
+- 文件（经 Nginx）：`http://localhost:8080/storage/*`
+
+### 4) 数据持久化（Excel 上传与导出）
+
+后端会把上传与导出的文件写到 `storage/`，`docker-compose.yml` 已将其挂载为 volume `api_storage`（容器内路径：`/app/storage`），容器重启不会丢数据。
+
+### 5) 停止与清理
+
+```bash
+# 停止
+docker compose down
+
+# 连同持久化数据一起删除（会清空上传/导出文件）
+docker compose down -v
+```
+
 ## 相关文档
 
 - 后端更详细的说明在 `apps/api/README.md`、`apps/api/SPEC.md`、`apps/api/USAGE.md`

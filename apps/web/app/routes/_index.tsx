@@ -390,7 +390,7 @@ const LLMChatPage = () => {
                     {outputFile && (
                       <ExcelPreview
                         className="w-full h-full"
-                        fileUrl={`/api${outputFile}`}
+                        fileUrl={`/api/${outputFile}`}
                       />
                     )}
                     {!outputFile && (

@@ -1,0 +1,23 @@
+.git
+.idea
+.vscode
+**/.DS_Store
+
+# Node
+**/node_modules
+**/.turbo
+**/dist
+**/build
+**/.react-router
+
+# Python
+**/__pycache__
+**/*.pyc
+**/.venv
+
+# Runtime storage (use docker volume instead)
+apps/api/storage
+
+# Secrets
+**/.env
+

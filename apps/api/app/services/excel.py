@@ -2,7 +2,6 @@
 
 import json
 import uuid
-import shutil
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
@@ -10,12 +9,12 @@ from dataclasses import dataclass
 
 from fastapi import UploadFile, HTTPException
 
-from app.lib.models import TableCollection
-from app.lib.excel_parser import ExcelParser
-from app.lib.llm_client import LLMClient
-from app.lib.executor import execute_operations
-from app.lib.excel_generator import generate_formulas
-from app.lib.parser import parse_and_validate
+from app.core.models import TableCollection
+from app.core.excel_parser import ExcelParser
+from app.core.llm_client import LLMClient
+from app.core.executor import execute_operations
+from app.core.excel_generator import generate_formulas
+from app.core.parser import parse_and_validate
 from app.core.config import UPLOAD_DIR, OUTPUT_DIR
 
 

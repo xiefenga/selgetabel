@@ -90,7 +90,7 @@ const AssistantMessage = ({ message }: Props) => {
                           )}
                           {message.outputFile && (
                             <a
-                              href={`/api${message.outputFile}`}
+                              href={`/api/${message.outputFile}`}
                               className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded"
                             >
                               下载结果文件
