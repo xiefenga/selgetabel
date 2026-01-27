@@ -61,6 +61,7 @@ async def get_user_with_roles_and_permissions(
         .where(User.status == 0)
         .options(
             selectinload(User.roles).selectinload(Role.permissions),
+            selectinload(User.accounts),
         )
     )
     result = await db.execute(stmt)

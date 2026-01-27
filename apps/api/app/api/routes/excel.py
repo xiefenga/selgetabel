@@ -31,63 +31,6 @@ from app.core.config import OUTPUT_DIR
 
 router = APIRouter()
 
-@router.post("/excel/upload", response_model=ApiResponse[List[UploadItem]], summary="上传 Excel 文件", description="上传一个或多个 Excel 文件，系统会自动解析表结构。每个文件会获得独立的 file_id。")
-async def upload_excel_files(files: List[UploadFile], current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """上传 Excel 文件，每个文件对应一个独立的 file_id，保存到数据库"""
-    if not files or len(files) == 0:
-        return ApiResponse(
-            code=400,
-            data=None,
-            msg="请上传文件"
-        )
-
-    # 为每个文件生成独立的 id 并加载表结构
-    items: List[UploadItem] = []
-    file_ids = []
-
-    for file in files:
-        # 先保存文件到文件系统
-        file_id_str, file_path = await save_upload_file(file)
-
-        # 保存文件到数据库
-        file_record = await save_file_to_database(
-            db=db,
-            user_id=current_user.id,
-            file=file,
-            file_path=file_path,
-        )
-
-        file_id = str(file_record.id)
-        file_ids.append(file_id)
-
-        # 为每个文件单独加载表结构
-        file_tables = load_tables_from_files([file_path])
-        schemas = file_tables.get_schemas()
-
-        # 为每个表创建一个 UploadItem
-        for table_name, table_schema in schemas.items():
-            items.append(UploadItem(
-                id=file_id,
-                table=table_name,
-                schema=table_schema,
-                path=f"/{str(file_path)}",
-            ))
-
-
-    if not items:
-        return ApiResponse(
-            code=400,
-            data=None,
-            msg="没有有效的 Excel 文件"
-        )
-
-    return ApiResponse(
-        code=0,
-        data=items,
-        msg="上传成功"
-    )
-
-
 def sse(action: str, status: str, data: dict = None) -> ServerSentEvent:
     """生成统一格式的 SSE 事件"""
     payload = {"action": action, "status": status}
@@ -185,7 +128,7 @@ async def process_excel_stream(query: str, file_ids: List[UUID], thread_id: Opti
         await db.flush()
 
         try:
-            file_paths = await get_files_by_ids_from_db(db, file_ids, user_id)
+            files = await get_files_by_ids_from_db(db, file_ids, user_id)
         except HTTPException as e:
             turn.status = "failed"
             turn.error_message = f"加载文件失败: {e.detail}"
@@ -193,7 +136,7 @@ async def process_excel_stream(query: str, file_ids: List[UUID], thread_id: Opti
             yield sse("load", "error", {"message": e.detail})
             return
 
-        if not file_paths:
+        if not files:
             turn.status = "failed"
             turn.error_message = "没有有效的 Excel 文件"
             await db.commit()
@@ -201,7 +144,7 @@ async def process_excel_stream(query: str, file_ids: List[UUID], thread_id: Opti
             return
 
         try:
-            tables = await asyncio.to_thread(load_tables_from_files, file_paths)
+            tables = await asyncio.to_thread(load_tables_from_files, files)
             schemas = tables.get_schemas()
             yield sse("load", "done", {"schemas": schemas})
         except HTTPException as e:

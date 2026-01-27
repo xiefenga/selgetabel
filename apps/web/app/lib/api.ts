@@ -9,8 +9,8 @@ import type { AxiosProgressEvent } from 'axios'
 export interface UploadItem {
   id: string;
   path: string;
-  table: string;
-  schema: Record<string, string>;
+  filename: string;
+  content_type: string | null
 }
 
 export type UploadResponse = UploadItem[];
@@ -40,7 +40,7 @@ export async function uploadFiles(files: File[], onProgress?: (progress: number)
   files.forEach((file) => formData.append("files", file));
 
   try {
-    const res = await axios.post<ApiResponse<UploadResponse>>(`${API_BASE}/excel/upload`, formData, {
+    const res = await axios.post<ApiResponse<UploadResponse>>(`${API_BASE}/file/upload`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },

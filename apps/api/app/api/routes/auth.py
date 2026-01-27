@@ -13,9 +13,10 @@ from app.models.user import User, Account
 from app.schemas.auth import (
     RegisterParams,
     LoginParams,
-    UpdateUserRequest,
+    UpdateUserParams,
     ChangePasswordRequest,
     BindAccountRequest,
+    AccountInfo,
     UserInfo,
 )
 from app.schemas.response import ApiResponse
@@ -119,6 +120,13 @@ async def login(params: LoginParams, request: Request, response: Response, db: A
             permissions_list.append(permission.code)
     permissions_list = list(set(permissions_list))  # 去重
 
+    # 获取 credentials 账户邮箱（用于 UserInfo.accounts.email）
+    credentials_email = None
+    for account in user_with_info.accounts:
+        if account.provider_id == "credentials":
+            credentials_email = account.account_id
+            break
+
     # 设置 cookie
     # Access Token 过期时间（分钟转秒）
     access_token_max_age = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
@@ -150,6 +158,9 @@ async def login(params: LoginParams, request: Request, response: Response, db: A
             username=user_with_info.username,
             avatar=user_with_info.avatar,
             status=user_with_info.status,
+            accounts=AccountInfo(
+                email=credentials_email or "",
+            ),
             roles=roles_list,
             permissions=permissions_list,
             created_at=user_with_info.created_at.isoformat(),
@@ -260,6 +271,13 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
             permissions.append(permission.code)
     permissions = list(set(permissions))  # 去重
 
+    # 获取 credentials 账户邮箱（用于 UserInfo.accounts.email）
+    credentials_email = None
+    for account in user.accounts:
+        if account.provider_id == "credentials":
+            credentials_email = account.account_id
+            break
+
     return ApiResponse(
         code=0,
         data=UserInfo(
@@ -267,6 +285,9 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
             username=user.username,
             avatar=user.avatar,
             status=user.status,
+            accounts=AccountInfo(
+                email=credentials_email or "",
+            ),
             roles=roles,
             permissions=permissions,
             created_at=user.created_at.isoformat(),
@@ -277,7 +298,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user), 
 
 
 @router.put("/me", response_model=ApiResponse[UserInfo], summary="更新用户信息")
-async def update_user_info(request: UpdateUserRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def update_user_info(params: UpdateUserParams, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """更新用户信息"""
     user = await get_user_by_id(db, current_user.id)
     if not user:
@@ -286,19 +307,19 @@ async def update_user_info(request: UpdateUserRequest, current_user: User = Depe
             detail="用户不存在",
         )
 
-    if request.username is not None:
+    if params.username is not None:
         # 检查用户名是否已被使用
-        stmt = select(User).where(User.username == request.username).where(User.id != user.id)
+        stmt = select(User).where(User.username == params.username).where(User.id != user.id)
         result = await db.execute(stmt)
         if result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="用户名已被使用",
             )
-        user.username = request.username
+        user.username = params.username
 
-    if request.avatar is not None:
-        user.avatar = request.avatar
+    if params.avatar is not None:
+        user.avatar = params.avatar
 
     user.updated_at = datetime.now(timezone.utc)
 
@@ -311,6 +332,13 @@ async def update_user_info(request: UpdateUserRequest, current_user: User = Depe
             permissions.append(permission.code)
     permissions = list(set(permissions))
 
+    # 获取 credentials 账户邮箱（用于 UserInfo.accounts.email）
+    credentials_email = None
+    for account in user.accounts:
+        if account.provider_id == "credentials":
+            credentials_email = account.account_id
+            break
+
     return ApiResponse(
         code=0,
         data=UserInfo(
@@ -318,6 +346,9 @@ async def update_user_info(request: UpdateUserRequest, current_user: User = Depe
             username=user.username,
             avatar=user.avatar,
             status=user.status,
+            accounts=AccountInfo(
+                email=credentials_email or "",
+            ),
             roles=roles,
             permissions=permissions,
             created_at=user.created_at.isoformat(),
@@ -328,11 +359,7 @@ async def update_user_info(request: UpdateUserRequest, current_user: User = Depe
 
 
 @router.put("/password", response_model=ApiResponse[None], summary="修改密码")
-async def change_password(
-    request: ChangePasswordRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+async def change_password(request: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """修改密码"""
     # 获取用户的 credentials 账户
     stmt = (

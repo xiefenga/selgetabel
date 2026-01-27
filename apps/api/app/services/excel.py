@@ -35,28 +35,21 @@ class ProcessResult:
     errors: list
 
 
-def load_tables_from_files(file_paths: List[Path]) -> TableCollection:
-    """从文件路径加载表"""
-    tables = TableCollection()
+def load_tables_from_files(files: List[File]) -> TableCollection:
+    """从文件记录加载表（内部通过 ExcelParser 使用 MinIO 解析）"""
+    # 将数据库记录转换为 (MinIO 公共路径, 原始文件名) 形式，传给解析器
+    file_infos = []
+    for f in files:
+        file_infos.append((f.file_path, f.filename or Path(f.file_path).name))
 
-    for file_path in file_paths:
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail=f"文件不存在: {file_path}")
-
-        try:
-            file_info = ExcelParser.get_file_info(file_path)
-
-            if len(file_info['sheets']) > 1:
-                sheet_tables = ExcelParser.parse_file_all_sheets(file_path)
-                for table_name in sheet_tables.get_table_names():
-                    tables.add_table(sheet_tables.get_table(table_name))
-            else:
-                table = ExcelParser.parse_file(file_path)
-                tables.add_table(table)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"解析文件失败: {e}")
-
-    return tables
+    try:
+        return ExcelParser.load_tables_from_minio_paths(file_infos)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"解析文件失败: {e}")
 
 
 async def save_upload_file(file: UploadFile, file_id: Optional[str] = None) -> tuple[str, Path]:
@@ -194,17 +187,15 @@ def get_file_path_from_db(file_record: File) -> Path:
         file_record: File 对象
 
     Returns:
-        文件路径
+        文件路径（当前为 MinIO 公共访问路径或本地相对路径）
     """
-    # 如果 file_path 是相对路径，需要转换为绝对路径
+    # 历史原因：之前是本地文件系统路径，这里保留相对路径 → 绝对路径的处理，
+    # 但不再强制要求本地存在，以便兼容 MinIO 等远程存储。
     file_path = Path(file_record.file_path)
     if not file_path.is_absolute():
         # 相对路径是相对于项目根目录的
         file_path = Path.cwd() / file_path
-    
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"文件不存在: {file_path}")
-    
+
     return file_path
 
 
@@ -226,7 +217,7 @@ async def get_files_by_ids_from_db(
     db: AsyncSession,
     file_ids: List[UUID],
     user_id: UUID,
-) -> List[Path]:
+) -> List[File]:
     """
     从数据库获取多个文件路径（验证用户权限）
 
@@ -236,15 +227,14 @@ async def get_files_by_ids_from_db(
         user_id: 用户 ID（用于权限验证）
 
     Returns:
-        文件路径列表
+        文件记录列表
     """
-    file_paths = []
+    files: List[File] = []
     for file_id in file_ids:
         file_record = await get_file_by_id_from_db(db, file_id, user_id)
-        file_path = get_file_path_from_db(file_record)
-        file_paths.append(file_path)
-    
-    return file_paths
+        files.append(file_record)
+
+    return files
 
 
 def process_excel(

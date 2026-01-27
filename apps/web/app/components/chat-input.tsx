@@ -97,7 +97,7 @@ const ChatInput = ({ text, onTextChange, onSubmit, onPasteFiles, placeholder, cl
             {previewFile && previewFile.path && (
               <ExcelPreview
                 className="w-full h-full"
-                fileUrl={`/api${previewFile.path}`}
+                fileUrl={`${previewFile.path}`}
               />
             )}
           </div>

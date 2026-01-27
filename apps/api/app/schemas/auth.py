@@ -32,7 +32,7 @@ class LogoutRequest(BaseModel):
     refresh_token: str = Field(..., description="刷新令牌")
 
 
-class UpdateUserRequest(BaseModel):
+class UpdateUserParams(BaseModel):
     """更新用户信息请求"""
 
     username: Optional[str] = Field(None, min_length=3, max_length=50, description="用户名")
@@ -62,6 +62,21 @@ class TokenResponse(BaseModel):
     token_type: str = Field(default="bearer", description="令牌类型")
 
 
+class AccountInfo(BaseModel):
+    """账户信息"""
+
+    # account_type: str = Field(..., description="账号类型：local / oauth / sso")
+    # provider: Optional[str] = Field(
+    #     None, description="第三方提供方标识，例如 github、google、wechat 等"
+    # )
+    email: str = Field(..., description="登录邮箱")
+    # phone: Optional[str] = Field(None, description="登录手机号")
+    # login_count: int = Field(default=0, description="累计登录次数")
+    # last_login_ip: Optional[str] = Field(None, description="最后登录 IP")
+    # last_login_device: Optional[str] = Field(None, description="最后登录设备信息")
+    # last_login_location: Optional[str] = Field(None, description="最后登录地，例如城市/国家")
+
+
 class UserInfo(BaseModel):
     """用户信息响应"""
 
@@ -69,6 +84,7 @@ class UserInfo(BaseModel):
     username: str = Field(..., description="用户名")
     avatar: Optional[str] = Field(None, description="头像 URL")
     status: int = Field(..., description="状态：0 正常，1 禁用")
+    accounts: AccountInfo = Field(..., description="该用户所有登录账户")
     roles: List[str] = Field(default_factory=list, description="角色代码列表")
     permissions: List[str] = Field(default_factory=list, description="权限代码列表")
     created_at: str = Field(..., description="创建时间")

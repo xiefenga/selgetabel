@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
+    # minio 配置
+    MINIO_ENDPOINT: str = ""
+    MINIO_ACCESS_KEY: str = ""
+    MINIO_SECRET_KEY: str = ""
+    MINIO_BUCKET: str = ""
+    MINIO_PUBLIC_BASE: str = ""
+
     @property
     def DATABASE_URL_ASYNC(self) -> str:
         """始终返回 postgresql+asyncpg URL，供应用与 Alembic 使用。"""

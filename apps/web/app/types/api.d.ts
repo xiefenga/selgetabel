@@ -41,6 +41,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 获取线程列表
+         * @description 获取当前用户的所有线程列表
+         */
+        get: operations["get_threads_threads_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 获取线程详情
+         * @description 获取指定线程的详细信息，包含所有消息
+         */
+        get: operations["get_thread_detail_threads__thread_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * 删除线程
+         * @description 删除指定的线程
+         */
+        delete: operations["delete_thread_threads__thread_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/register": {
         parameters: {
             query?: never;
@@ -189,6 +233,40 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AccountInfo
+         * @description 账户信息
+         */
+        AccountInfo: {
+            /**
+             * Email
+             * @description 登录邮箱
+             */
+            email: string;
+        };
+        /** ApiResponse[List[ThreadListItem]] */
+        ApiResponse_List_ThreadListItem__: {
+            /**
+             * Code
+             * @description 响应状态码，0 表示成功，非 0 表示失败
+             * @example 0
+             * @example 400
+             * @example 500
+             */
+            code: number;
+            /**
+             * Data
+             * @description 响应数据
+             */
+            data?: components["schemas"]["ThreadListItem"][] | null;
+            /**
+             * Msg
+             * @description 响应消息
+             * @example 成功
+             * @example 请上传文件
+             */
+            msg: string;
+        };
         /** ApiResponse[List[UploadItem]] */
         ApiResponse_List_UploadItem__: {
             /**
@@ -227,6 +305,26 @@ export interface components {
              * @description 响应数据
              */
             data?: null;
+            /**
+             * Msg
+             * @description 响应消息
+             * @example 成功
+             * @example 请上传文件
+             */
+            msg: string;
+        };
+        /** ApiResponse[ThreadDetail] */
+        ApiResponse_ThreadDetail_: {
+            /**
+             * Code
+             * @description 响应状态码，0 表示成功，非 0 表示失败
+             * @example 0
+             * @example 400
+             * @example 500
+             */
+            code: number;
+            /** @description 响应数据 */
+            data?: components["schemas"]["ThreadDetail"] | null;
             /**
              * Msg
              * @description 响应消息
@@ -362,6 +460,63 @@ export interface components {
             password: string;
         };
         /**
+         * ThreadDetail
+         * @description 线程详情
+         */
+        ThreadDetail: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Turns
+             * @description 消息列表
+             */
+            turns?: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * ThreadListItem
+         * @description 线程列表项
+         */
+        ThreadListItem: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Turn Count
+             * @description 消息数量
+             * @default 0
+             */
+            turn_count?: number;
+        };
+        /**
          * UpdateUserRequest
          * @description 更新用户信息请求
          */
@@ -439,6 +594,8 @@ export interface components {
              * @description 状态：0 正常，1 禁用
              */
             status: number;
+            /** @description 该用户所有登录账户 */
+            accounts: components["schemas"]["AccountInfo"];
             /**
              * Roles
              * @description 角色代码列表
@@ -531,6 +688,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_threads_threads_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_List_ThreadListItem__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_thread_detail_threads__thread_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_ThreadDetail_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_thread_threads__thread_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponse_NoneType_"];
                 };
             };
             /** @description Validation Error */

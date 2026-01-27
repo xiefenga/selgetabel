@@ -1,3 +1,4 @@
+import NiceModal from '@ebay/nice-modal-react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 
@@ -30,7 +31,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </head>
       <body className="h-screen w-screen overflow-hidden">
         <QueryClientProvider client={queryClient}>
-          {children}
+          <NiceModal.Provider>
+            {children}
+          </NiceModal.Provider>
           <Toaster />
         </QueryClientProvider>
         <ScrollRestoration />
