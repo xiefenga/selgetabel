@@ -87,23 +87,27 @@ export interface ThreadListItem {
   turn_count: number;
 }
 
+/** 步骤记录（与 STEPS_STORAGE_SPEC 对齐） */
+export interface ThreadTurnStep {
+  step: string;
+  status: string;
+  output?: Record<string, unknown>;
+  error?: { code: string; message: string };
+  started_at?: string;
+  completed_at?: string;
+}
+
 export interface ThreadTurn {
   id: string;
   turn_number: number;
   user_query: string;
   status: string;
-  analysis?: string | null;
-  operations_json?: Record<string, unknown> | null;
-  error_message?: string | null;
+  /** 步骤数组（核心数据） */
+  steps: ThreadTurnStep[];
   created_at: string;
   completed_at?: string | null;
   file_ids?: string[];
-  files?: { id: string, filename: string, path: string }[]
-  result?: {
-    output_file?: string | null;
-    output_file_path?: string | null;
-    formulas?: Record<string, unknown> | null;
-  };
+  files?: { id: string; filename: string; path: string }[];
 }
 
 export interface ThreadDetail {

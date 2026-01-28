@@ -40,10 +40,6 @@ class LLMClient:
 
         self.client = OpenAI(**client_kwargs)
 
-        self.enable_thinking = os.getenv(
-            "OPENAI_ENABLE_THINKING", "false"
-        ).lower() == "true"
-
     def _call_llm(self, system_prompt: str, user_message: str) -> str:
         """
         调用 LLM
@@ -56,30 +52,29 @@ class LLMClient:
             LLM 响应内容
         """
 
-        request_params = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            "temperature": 0,
-            "max_tokens": 4000,
-            "stream": False,
-        }
+        messages = [
+            { "role": "system", "content": system_prompt },
+            { "role": "user", "content": user_message }
+        ]
 
-        if not self.enable_thinking:
-            request_params["extra_body"] = {"enable_thinking": False}
-
-        response = self.client.chat.completions.create(**request_params)
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            temperature=0,
+            extra_body={
+                "enable_thinking": False
+            }
+            # stream=False
+            # "stream": False,
+            # "extra_body": {
+            #     "enable_thinking": False
+            # },
+        )
         return response.choices[0].message.content.strip()
 
     # ==================== 第一步：需求分析 ====================
 
-    def analyze_requirement(
-        self,
-        user_requirement: str,
-        table_schemas: Optional[Dict[str, Dict[str, str]]] = None
-    ) -> str:
+    def analyze_requirement(self, user_requirement: str, table_schemas: Optional[Dict[str, Dict[str, str]]] = None) -> str:
         """
         第一步：分析用户需求
 

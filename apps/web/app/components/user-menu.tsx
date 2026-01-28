@@ -10,8 +10,6 @@ export const UserMenu = () => {
   const navigate = useNavigate();
   const { user, clearUser } = useAuthStore();
 
-  console.log(user)
-
   if (!user) {
     return null;
   }

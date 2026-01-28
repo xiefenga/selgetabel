@@ -8,13 +8,15 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "~/componen
 import ChatInput from "~/components/chat-input";
 import MessageList from "~/components/llm-chat/message-list";
 
-import { useExcelChat, type ChatMessage, type UserMessage } from "~/hooks/use-excel-chat";
-
 import { getThreadDetail, uploadFiles } from "~/lib/api";
-
 
 import { type FileItem } from "~/components/file-item-badge";
 import type { Route } from "./+types/_auth._app.threads.($id)";
+import { useChat, type ChatMessage } from "~/hooks/use-chat";
+import invariant from "tiny-invariant";
+import { useAuthStore } from "~/stores/auth";
+import type { AssistantMessage, UserMessage, StepRecord, StepName, StepError } from "~/components/llm-chat/message-list/types";
+import dayjs from "dayjs";
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -38,79 +40,86 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
 
   const queryClient = useQueryClient()
 
-  const { messages, resetChat, sendMessage, setMessages, clearMessages } = useExcelChat({
+  const { messages, resetChat, sendMessage, setMessages, clearMessages } = useChat({
     onStart: () => {
       setQuery("");
       setFileItems([])
     },
-    onExecuteSuccess: (newOutputFile, formulas, newThreadId) => {
-      setOutputFile(newOutputFile);
-      // 如果有新的 thread_id，跳转到详情页
-      if (newThreadId && !threadId) {
-        initThreadId.current = newThreadId
-        navigate(`/threads/${newThreadId}`);
-      }
-    },
-    onRefreshThread: () => {
+    onSessionCreated: ({ thread_id }) => {
+      initThreadId.current = thread_id
+      navigate(`/threads/${thread_id}`);
       queryClient.invalidateQueries({ queryKey: ['threads'] })
     },
   });
+
+  const user = useAuthStore(state => state.user)
 
   const { mutate } = useMutation({
     mutationFn: (threadId: string) => getThreadDetail(threadId),
     onSuccess: (thread) => {
       console.log(thread)
       const messages: ChatMessage[] = [];
+      invariant(user)
 
       thread.turns.forEach((turn) => {
         // 添加用户消息
         messages.push({
           id: `${turn.id}-user`,
+          avatar: user.avatar!,
           role: "user",
           content: turn.user_query,
-          files: turn.files
+          files: turn.files,
+          created: dayjs(turn.created_at).unix()
         } satisfies UserMessage);
 
-        // 确定 assistant 消息的状态
-        let status: "pending" | "streaming" | "done" | "error" = "done";
-        let processState: "loading" | "analyzing" | "generating" | "executing" = "executing";
 
-        if (turn.status === "failed") {
-          status = "error";
-        } else if (turn.status === "processing") {
-          status = "streaming";
-        } else if (turn.status === "pending") {
-          status = "pending";
-        }
-
-        // 根据已有数据确定处理阶段
-        if (turn.result?.output_file || turn.result?.formulas) {
-          processState = "executing";
-        } else if (turn.operations_json) {
-          processState = "generating";
-        } else if (turn.analysis) {
-          processState = "analyzing";
-        } else {
-          processState = "loading";
-        }
 
         // 添加助手消息
-        const assistantMessage: ChatMessage = {
+        // 从 turn.steps 回填步骤数据（steps 已经是符合规范的数组格式）
+        // 使用类型断言将 API 返回的步骤数据转换为 StepRecord 类型
+        const turnSteps = (turn.steps || []).map((step) => {
+          const baseStep = {
+            step: step.step as StepName,
+            started_at: step.started_at,
+            completed_at: step.completed_at,
+          };
+
+          if (step.status === "done" && step.output) {
+            return { ...baseStep, status: "done" as const, output: step.output };
+          }
+          if (step.status === "error" && step.error) {
+            return { ...baseStep, status: "error" as const, error: step.error as StepError };
+          }
+          if (step.status === "streaming") {
+            return { ...baseStep, status: "streaming" as const };
+          }
+          return { ...baseStep, status: "running" as const };
+        }) as StepRecord[];
+
+        // 判断助手消息状态
+        let assistantStatus: AssistantMessage["status"] = "done";
+        if (turn.status === "processing") {
+          assistantStatus = "streaming";
+        } else if (turn.status === "failed") {
+          assistantStatus = "error";
+        } else if (turn.status === "pending") {
+          assistantStatus = "pending";
+        }
+
+        // 检查是否有步骤级错误
+        const hasStepError = turnSteps.some((s) => s.status === "error");
+        const lastErrorStep = turnSteps.filter((s) => s.status === "error").pop();
+        const errorMessage = lastErrorStep && "error" in lastErrorStep
+          ? lastErrorStep.error?.message
+          : undefined;
+
+        const assistantMessage: AssistantMessage = {
           id: `${turn.id}-assistant`,
           role: "assistant",
-          processState,
-          status,
-          analysis: turn.analysis || undefined,
-          operations: turn.operations_json || undefined,
-          outputFile: turn.result?.output_file_path || turn.result?.output_file || undefined,
-          formulas: turn.result?.formulas ? JSON.stringify(turn.result.formulas) : undefined,
-          error: turn.error_message || undefined,
-          steps: {
-            loading: turn.status === "completed" ? "done" : turn.status === "failed" ? "error" : "start",
-            analyzing: turn.analysis ? "done" : undefined,
-            generating: turn.operations_json ? "done" : undefined,
-            executing: turn.result ? "done" : undefined,
-          },
+          status: hasStepError ? "error" : assistantStatus,
+          steps: turnSteps,
+          error: hasStepError ? errorMessage : undefined,
+          completed: turn.completed_at ? dayjs(turn.completed_at).unix() : undefined,
         };
 
         messages.push(assistantMessage);

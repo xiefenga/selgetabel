@@ -36,15 +36,16 @@ def generate_thread_title(query: str, llm_client: LLMClient) -> Optional[str]:
     try:
         # 调用 LLM 生成标题
         title = llm_client._call_llm(system_prompt, query)
-        
+
         # 清理标题：去除可能的引号、换行等
         title = title.strip().strip('"').strip("'").strip()
-        
+
         # 限制长度
         if len(title) > 30:
             title = title[:30]
-        
-        return title if title else None
-    except Exception:
+
+        return title if title else query
+    except Exception as e:
         # 如果 LLM 调用失败，返回 None，不影响主流程
-        return None
+        print(e)
+        return query

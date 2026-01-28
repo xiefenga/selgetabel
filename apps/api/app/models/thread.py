@@ -56,6 +56,18 @@ class Thread(Base):
 
 
 class ThreadTurn(Base):
+    """
+    聊天轮次记录
+
+    steps 字段存储处理流程的执行历史，结构为数组：
+    [
+        {"step": "load", "status": "done", "output": {...}, "started_at": "...", "completed_at": "..."},
+        {"step": "analyze", "status": "done", "output": {...}, ...},
+        ...
+    ]
+
+    详见 STEPS_STORAGE_SPEC.md
+    """
     __tablename__ = "thread_turns"
 
     id: Mapped[UUID] = mapped_column(
@@ -73,9 +85,9 @@ class ThreadTurn(Base):
     turn_number: Mapped[int] = mapped_column(Integer, nullable=False)
     user_query: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    analysis: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    operations_json: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # 核心字段：存储所有步骤的执行历史
+    steps: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -108,50 +120,6 @@ class ThreadTurn(Base):
         secondary="turn_files",
         back_populates="turns",
     )
-    result: Mapped[Optional["TurnResult"]] = relationship(
-        "TurnResult",
-        back_populates="turn",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
-
-
-class TurnResult(Base):
-    __tablename__ = "turn_results"
-
-    id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
-        primary_key=True,
-        default=uuid4,
-    )
-    turn_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
-        ForeignKey("thread_turns.id", ondelete="CASCADE"),
-        unique=True,
-        nullable=False,
-        index=True,
-    )
-
-    variables: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    new_columns: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    formulas: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    output_file: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    output_file_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    errors: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-
-    turn: Mapped["ThreadTurn"] = relationship("ThreadTurn", back_populates="result")
 
 
 class TurnFile(Base):
