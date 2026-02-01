@@ -1,0 +1,44 @@
+id: "07-heart-disease"
+name: "心脏病预测数据"
+description: "心脏病患者医疗数据，用于测试字典映射、分组分析、数据分箱等场景"
+
+datasets:
+  - file: "heart.xlsx"
+    description: "患者医疗指标表"
+
+cases:
+  - id: "dict-mapping"
+    name: "字典映射"
+    prompt: |
+      为了让表格更易读，请处理 Sex 列：将所有的 'M' 替换为 'Male'，'F' 替换为 'Female'。同时处理 HeartDisease 列：将 '1' 替换为 '患病'，'0' 替换为 '健康'。写入原表。
+    tags: ["字典映射", "替换"]
+
+  - id: "group-avg"
+    name: "分组平均值分析"
+    prompt: |
+      分析一下患病人群的特征。请按 HeartDisease（或 target）列分组，计算 Age（年龄）和 Cholesterol（胆固醇）的平均值。结果生成一个新表。
+    tags: ["分组", "平均值"]
+
+  - id: "age-binning"
+    name: "年龄段分箱"
+    prompt: |
+      将年龄 Age 分为三组：小于 40 为 'Young'，40-60 为 'Middle'，60 以上为 'Senior'。结果写入原表新列 Age_Group。
+    tags: ["分箱", "条件判断"]
+
+  - id: "high-risk"
+    name: "高危人群筛选"
+    prompt: |
+      筛选出 RestingBP（静息血压）大于 170 或 Cholesterol（胆固醇）大于 400 的高危人群。结果写入一个新 Sheet。
+    tags: ["筛选", "OR条件"]
+
+  - id: "hr-analysis"
+    name: "最大心率分析"
+    prompt: |
+      按 Sex 和 ChestPainType 分组，计算 MaxHR（最大心率）的平均值。结果生成一个新表。
+    tags: ["多维分组", "平均值"]
+
+  - id: "ratio-calc"
+    name: "胆固醇/年龄比率"
+    prompt: |
+      计算 Cholesterol 除以 Age 的比值，用来观察随年龄的相对指标。结果写入原表新列 Chol_Age_Ratio。
+    tags: ["计算", "比率"]

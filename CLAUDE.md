@@ -77,39 +77,62 @@ pnpm typecheck
 
 ### API Application (`apps/api`)
 
-The Python backend follows this architecture:
+The Python backend follows a layered architecture:
 
 ```
 apps/api/
 ├── app/
-│   ├── main.py              # FastAPI application entry
+│   ├── main.py                # FastAPI application entry
 │   ├── api/
-│   │   ├── routes.py        # API endpoints (SSE streaming for process flow)
-│   │   └── deps.py          # Dependency injection (LLM client)
-│   ├── core/
-│   │   └── config.py        # Configuration and directory initialization
-│   ├── schemas/
-│   │   └── response.py      # Pydantic response models
-│   ├── services/
-│   │   └── excel.py         # Excel file handling (upload, parse, save)
-│   └── lib/                 # Core processing logic
-│       ├── parser.py        # JSON operation parser and validator
-│       ├── executor.py      # Execution engine (evaluates JSON expressions)
-│       ├── functions.py     # Excel function implementations
-│       ├── excel_generator.py  # Generates Excel formulas from JSON
-│       ├── llm_client.py    # OpenAI client (two-step flow)
-│       └── prompt.py        # System prompts for both LLM steps
-├── SPEC.md                  # Complete technical specification
-├── README.md                # API usage guide
-├── pyproject.toml           # Python dependencies (managed by uv)
-└── cli.py                   # Command-line interface
+│   │   ├── routes/            # API endpoints
+│   │   │   ├── chat.py        # Chat API (SSE streaming)
+│   │   │   ├── file.py        # File upload
+│   │   │   ├── fixture.py     # Fixture testing API
+│   │   │   └── thread.py      # Thread management
+│   │   └── deps.py            # Dependency injection
+│   ├── processor/             # Layer 2: Processing orchestration
+│   │   ├── excel_processor.py # Main processor (coordinates stages)
+│   │   ├── types.py           # ProcessEvent, ProcessConfig, etc.
+│   │   └── stages/            # Processing stages
+│   │       ├── analyze.py     # LLM analysis stage
+│   │       ├── generate.py    # LLM operation generation
+│   │       └── execute.py     # Operation execution
+│   ├── engine/                # Layer 3: Core atomic operations
+│   │   ├── models.py          # Data models (Table, FileCollection, etc.)
+│   │   ├── llm_client.py      # OpenAI client (two-step flow)
+│   │   ├── parser.py          # JSON operation parser and validator
+│   │   ├── executor.py        # Execution engine
+│   │   ├── excel_generator.py # Excel formula generator
+│   │   ├── excel_parser.py    # Excel file parser
+│   │   ├── functions.py       # Excel function implementations
+│   │   ├── prompt.py          # System prompts for LLM
+│   │   └── step_tracker.py    # Step progress tracking
+│   ├── core/                  # Infrastructure layer
+│   │   ├── config.py          # Configuration
+│   │   ├── database.py        # Database connections
+│   │   ├── base.py            # ORM base class
+│   │   └── jwt.py             # JWT authentication
+│   ├── services/              # Business services
+│   │   └── excel.py           # Excel file handling
+│   └── persistence/           # Data access
+│       └── turn_repository.py # Thread/Turn database operations
+├── README.md
+├── pyproject.toml
+└── cli.py                     # Command-line interface
 ```
 
+**Architecture Layers:**
+
+1. **Adapters (API routes)**: Handle HTTP/SSE, authentication, file storage
+2. **Processor**: Orchestrates the processing pipeline with observable events
+3. **Engine**: Pure functions for LLM calls, parsing, execution, formula generation
+
 **Key modules:**
-- `routes.py`: Implements SSE (Server-Sent Events) streaming for real-time processing updates
-- `llm_client.py`: Manages the two-step LLM flow (analyze → generate)
-- `executor.py`: Evaluates JSON expression trees and executes operations
-- `excel_generator.py`: Maps JSON operations to Excel formula strings
+
+- `processor/excel_processor.py`: Main processing pipeline with event generation
+- `engine/llm_client.py`: Manages the two-step LLM flow (analyze → generate)
+- `engine/executor.py`: Evaluates JSON expression trees and executes operations
+- `engine/excel_generator.py`: Maps JSON operations to Excel formula strings
 
 ### Web Application (`apps/web`)
 
@@ -129,13 +152,14 @@ apps/web/
 ```
 
 **Key features:**
+
 - SSE (Server-Sent Events) for real-time processing status
 - Collapsible sections for analysis, operations, and formulas
 - File upload with multi-file support
 
 ## Operation Types
 
-The system supports three operation types (see `apps/api/SPEC.md` for complete details):
+The system supports three operation types (see `docs/OPERATION_SPEC.md` for complete details):
 
 1. **`aggregate`**: Column-level aggregation (SUM, COUNT, AVERAGE, SUMIF, COUNTIF, etc.)
 2. **`add_column`**: Row-level calculations to add new columns (IF, VLOOKUP, COUNTIFS, etc.)
@@ -148,12 +172,13 @@ All formulas use JSON objects instead of strings:
 ```json
 {
   "op": "+",
-  "left": {"col": "price"},
-  "right": {"value": 100}
+  "left": { "col": "price" },
+  "right": { "value": 100 }
 }
 ```
 
 Expression types:
+
 - `{"value": ...}` - Literal value
 - `{"col": "name"}` - Current row column reference
 - `{"ref": "table.column"}` - Cross-table column reference
@@ -211,18 +236,18 @@ OPENAI_API_BASE=https://api.openai.com/v1  # Optional: for compatible APIs
 
 ### When Working on the API
 
-1. **Function Whitelist**: All Excel functions must be in the whitelist (`apps/api/lib/parser.py`). Never allow arbitrary function names.
+1. **Function Whitelist**: All Excel functions must be in the whitelist (`apps/api/app/engine/parser.py`). Never allow arbitrary function names.
 
-2. **JSON Expression Trees**: The `executor.py` module evaluates nested JSON expressions recursively. When adding new functions:
-   - Add to whitelist in `parser.py`
-   - Implement in `functions.py`
-   - Add formula template in `excel_generator.py`
+2. **JSON Expression Trees**: The `engine/executor.py` module evaluates nested JSON expressions recursively. When adding new functions:
+   - Add to whitelist in `engine/parser.py`
+   - Implement in `engine/functions.py`
+   - Add formula template in `engine/excel_generator.py`
 
 3. **Table Context**: The system maintains a `TableCollection` object that stores all loaded Excel sheets. Each operation references tables by name.
 
 4. **Column Mapping**: Excel column letters are mapped from DataFrame column names. The generator needs this mapping to create Excel formulas like `=A2*0.9`.
 
-5. **Two-Step Prompts**: The prompts in `prompt.py` are critical:
+5. **Two-Step Prompts**: The prompts in `engine/prompt.py` are critical:
    - Analysis prompt: Gets LLM to think in Excel formula terms
    - Generate prompt: Converts analysis to strict JSON (includes the analysis as context)
 
@@ -240,11 +265,12 @@ OPENAI_API_BASE=https://api.openai.com/v1  # Optional: for compatible APIs
 
 To understand the full system flow, read these files in order:
 
-1. `apps/api/SPEC.md` - Complete technical specification with examples
-2. `apps/api/app/api/routes.py` - SSE endpoint showing the full flow
-3. `apps/api/app/lib/prompt.py` - System prompts for both LLM steps
-4. `apps/api/app/lib/executor.py` - Expression evaluation engine
-5. `apps/web/app/routes/_index.tsx` - Frontend implementation
+1. `docs/OPERATION_SPEC.md` - Complete technical specification with examples
+2. `docs/PROCESSOR_DESIGN.md` - Architecture and processing pipeline design
+3. `apps/api/app/processor/excel_processor.py` - Main processing orchestration
+4. `apps/api/app/engine/prompt.py` - System prompts for both LLM steps
+5. `apps/api/app/engine/executor.py` - Expression evaluation engine
+6. `apps/api/app/api/routes/chat.py` - SSE endpoint implementation
 
 ## Technical Details
 
@@ -262,6 +288,7 @@ Applied: =D2*0.9, =D3*0.9, =D4*0.9, ...
 ```
 
 For `aggregate` operations, it generates single formulas:
+
 ```
 =SUMIF(订单表!B:B, "已完成", 订单表!C:C)
 ```

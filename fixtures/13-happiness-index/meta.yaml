@@ -1,0 +1,52 @@
+id: "13-happiness-index"
+name: "全球幸福指数报告"
+description: "全球幸福指数多年数据，用于测试跨表计算、对比分析、分组统计等场景"
+
+datasets:
+  - file: "2015.xlsx"
+    description: "2015年幸福指数数据"
+  - file: "2016.xlsx"
+    description: "2016年幸福指数数据"
+
+schema:
+  - sheet: "Sheet1 (2015)"
+    columns: ["Country", "Happiness Score", "Region"]
+  - sheet: "Sheet2 (2016)"
+    columns: ["Country", "Happiness Score", "Region"]
+
+cases:
+  - id: "cross-table-diff"
+    name: "跨表差值计算"
+    prompt: |
+      遍历 Sheet2 的国家，去 Sheet1 查找对应分数。计算 2016 分数减去 2015 分数的差值。生成新表包含：Country, 2016_Score, Score_Change。
+    tags: ["跨表计算", "VLOOKUP", "差值"]
+
+  - id: "rank-drop"
+    name: "排名下降国家"
+    prompt: |
+      对比两表，筛选出 Sheet2 分数低于 Sheet1 的国家。将国家名和两年分数写入新 Sheet。
+    tags: ["跨表对比", "筛选"]
+
+  - id: "region-avg"
+    name: "区域平均分对比"
+    prompt: |
+      分别计算 2015 和 2016 年每个 Region 的平均分数，并将两个结果合并在一个表中显示（列：Region, Avg_2015, Avg_2016）。结果生成新表。
+    tags: ["分组", "跨表合并"]
+
+  - id: "top5-merge"
+    name: "Top 5 国家合并"
+    prompt: |
+      分别找出 2015 和 2016 年分数最高的 5 个国家。将这两组数据合并，并增加一列 'Year' 区分。结果写入新 Sheet。
+    tags: ["TOP N", "合并", "新增列"]
+
+  - id: "growth-rate"
+    name: "幸福指数增长率"
+    prompt: |
+      计算增长率：(2016分 - 2015分) / 2015分。结果写入新表，包含 Country 和 Growth_Rate。
+    tags: ["跨表计算", "增长率"]
+
+  - id: "above-avg"
+    name: "高于平均值国家"
+    prompt: |
+      计算 2015 年的全球平均分，然后筛选出 2015 年分数高于该平均值的国家。结果写入新 Sheet。
+    tags: ["统计", "筛选"]

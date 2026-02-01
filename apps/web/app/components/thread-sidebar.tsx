@@ -20,7 +20,7 @@ const ThreadSidebar = ({ isOpen, onClose }: Props) => {
   const navigate = useNavigate();
   const params = useParams();
 
-  const { data: threads, isLoading } = useQuery({
+  const { data: threads, isLoading, refetch } = useQuery({
     queryKey: ['threads'],
     queryFn: () => getThreads()
   })
@@ -32,6 +32,7 @@ const ThreadSidebar = ({ isOpen, onClose }: Props) => {
     },
     onSuccess: (_, threadId) => {
       toast.success("删除成功")
+      refetch()
       if (params.id === threadId) {
         navigate("/threads");
       }

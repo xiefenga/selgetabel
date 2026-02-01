@@ -291,12 +291,10 @@ result = SUMIF(订单.amount, 订单.status, "已完成")
 ### ✅ 好的需求描述
 
 1. **明确具体**：
-
    - ✅ "计算已完成订单的总金额"
    - ❌ "算一下订单"
 
 2. **指明表和字段**（如果不明显）：
-
    - ✅ "计算 orders 表中 status='已完成' 的 amount 总和"
    - ✅ "统计客户表中 VIP 客户的数量"
 
@@ -375,4 +373,4 @@ python main.py file1.xlsx file2.xlsx file3.xlsx
 
 **需要帮助？**
 
-查看 [SPEC.md](SPEC.md) 了解完整技术规范。
+查看 [OPERATION_SPEC.md](../../docs/OPERATION_SPEC.md) 了解完整技术规范。

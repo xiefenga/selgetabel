@@ -1,0 +1,44 @@
+id: "03-netflix"
+name: "Netflix 影视剧列表"
+description: "Netflix 影视内容数据，用于测试日期处理、文本筛选、数据提取等场景"
+
+datasets:
+  - file: "netflix.xlsx"
+    description: "Netflix 影视内容表"
+
+cases:
+  - id: "date-format"
+    name: "日期格式清洗"
+    prompt: |
+      将 date_added 列中的日期格式统一转换为标准的'YYYY-MM-DD'格式（例如 2021-09-25）。直接修改原表中的该列。
+    tags: ["日期处理", "格式化"]
+
+  - id: "content-filter"
+    name: "基于内容的筛选"
+    prompt: |
+      帮我找出口味比较重的电影。筛选出 description 列中包含'horror'或'scary'关键词，且 type 为'Movie'的数据。将筛选出的 title 和 description 两列写入一个名为'恐怖电影'的新 Sheet。
+    tags: ["文本筛选", "新Sheet"]
+
+  - id: "duration-extract"
+    name: "时长数据提取"
+    prompt: |
+      duration 列的数据格式是 '90 min' 或 '1 Season'。请提取其中的数字部分（如 90 或 1）。结果写入原表名为 Duration_Num 的新列。
+    tags: ["文本提取", "新增列"]
+
+  - id: "country-stats"
+    name: "国家内容产出统计"
+    prompt: |
+      统计每个国家制作的内容数量。按 country 列分组计数，并按数量从多到少排序，只保留前 10 名。结果写入一个新 Sheet。
+    tags: ["分组", "统计", "排序"]
+
+  - id: "old-movies"
+    name: "老片挖掘"
+    prompt: |
+      筛选出 release_year 在 1990 年以前（不含 1990）的所有电影。将 Title, Release_Year, Country 三列写入一个新 Sheet。
+    tags: ["筛选", "新Sheet"]
+
+  - id: "missing-director"
+    name: "缺失导演标记"
+    prompt: |
+      检查 director 列，如果为空，请填入 'Unknown Director'。直接修改原表。
+    tags: ["缺失值", "填充"]

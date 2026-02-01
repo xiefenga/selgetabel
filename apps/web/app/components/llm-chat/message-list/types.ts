@@ -48,8 +48,8 @@ export interface GenerateStepOutput {
 
 /** execute 步骤输出 */
 export interface ExecuteStepOutput {
-  formulas?: unknown[];
-  output_file?: string;
+  formulas: string;
+  output_file: string;
   variables?: Record<string, unknown>;
   new_columns?: Record<string, unknown>;
   errors?: unknown[];

@@ -196,11 +196,10 @@ apps/api/
 ├── excel_generator.py  # Excel 公式生成
 ├── llm_client.py       # LLM 客户端（两步调用）
 ├── prompt.py           # 需求分析 + 生成操作提示词
-├── SPEC.md             # 完整技术规范
 ├── pyproject.toml      # 依赖配置
 └── data/               # 示例数据
 ```
 
 ## 技术规范
 
-详见 [SPEC.md](SPEC.md)
+详见 [OPERATION_SPEC.md](../../docs/OPERATION_SPEC.md)

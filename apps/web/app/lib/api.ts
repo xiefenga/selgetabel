@@ -35,6 +35,181 @@ export interface SSEMessage {
   };
 }
 
+// ============ Fixture 相关类型 ============
+
+export interface FixtureGroup {
+  id: string;
+  name: string;
+  description: string;
+  scenario_count: number;
+}
+
+export interface FixtureScenarioSummary {
+  id: string;
+  name: string;
+  group: string;
+  tags: string[];
+  case_count: number;
+}
+
+export interface FixtureListResponse {
+  groups: FixtureGroup[];
+  scenarios: FixtureScenarioSummary[];
+}
+
+export interface FixtureDataset {
+  file: string;
+  description: string;
+}
+
+export interface FixtureCaseSummary {
+  id: string;
+  name: string;
+  prompt: string;
+  tags: string[];
+}
+
+export interface FixtureScenarioDetail {
+  id: string;
+  name: string;
+  description: string;
+  group: string;
+  tags: string[];
+  datasets: FixtureDataset[];
+  cases: FixtureCaseSummary[];
+}
+
+// Fixture SSE 事件类型
+export interface FixtureSSEMeta {
+  scenario_id: string;
+  case_id: string;
+  case_name: string;
+  prompt: string;
+}
+
+export interface FixtureSSEStep {
+  step: string;
+  stage_id?: string;  // 阶段实例唯一标识（重试时每次生成新 id）
+  status: "running" | "streaming" | "done" | "error";
+  delta?: string;
+  output?: unknown;
+  error?: string;
+}
+
+export interface FixtureSSEComplete {
+  success: boolean;
+  errors?: string[];
+  output_file?: string;
+}
+
+export interface FixtureSSEError {
+  message: string;
+}
+
+// 获取 Fixture 列表
+export async function getFixtureList(): Promise<FixtureListResponse> {
+  try {
+    const res = await axios.get<FixtureListResponse>(`${API_BASE}/fixture/list`);
+    return res.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.detail || error.message || "获取失败";
+      throw new Error(errorMessage);
+    }
+    throw new Error("获取失败");
+  }
+}
+
+// 获取场景详情
+export async function getFixtureScenario(scenarioId: string): Promise<FixtureScenarioDetail> {
+  try {
+    const res = await axios.get<FixtureScenarioDetail>(`${API_BASE}/fixture/scenario/${scenarioId}`);
+    return res.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.detail || error.message || "获取失败";
+      throw new Error(errorMessage);
+    }
+    throw new Error("获取失败");
+  }
+}
+
+// 运行 Fixture 测试用例 (SSE)
+interface RunFixtureOptions {
+  scenarioId: string;
+  caseId: string;
+  streamLlm?: boolean;
+  events: {
+    onMeta?: (data: FixtureSSEMeta) => void;
+    onStep?: (data: FixtureSSEStep) => void;
+    onComplete?: (data: FixtureSSEComplete) => void;
+    onError?: (data: FixtureSSEError) => void;
+    onFinally?: () => void;
+  };
+}
+
+interface RunFixturePromise extends Promise<void> {
+  abort: () => void;
+}
+
+export const runFixtureCase = ({ scenarioId, caseId, streamLlm = true, events: { onMeta, onStep, onComplete, onError, onFinally } }: RunFixtureOptions): RunFixturePromise => {
+  const controller = new AbortController();
+
+  const trigger = async () => {
+    try {
+      const url = new URL(`${window.location.origin}${API_BASE}/fixture/run/${scenarioId}/${caseId}`);
+      url.searchParams.set("stream_llm", String(streamLlm));
+
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error("请求失败");
+      }
+
+      for await (const event of events(res, controller.signal)) {
+        if (!event.data) continue;
+
+        try {
+          const data = JSON.parse(event.data);
+          
+          // 根据 event.event 分发不同的处理器
+          switch (event.event) {
+            case "meta":
+              onMeta?.(data as FixtureSSEMeta);
+              break;
+            case "complete":
+              onComplete?.(data as FixtureSSEComplete);
+              break;
+            case "error":
+              onError?.(data as FixtureSSEError);
+              break;
+            default:
+              // 默认是步骤事件
+              onStep?.(data as FixtureSSEStep);
+              break;
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+    } catch (err) {
+      const error = err as Error;
+      if (error.name !== "AbortError") {
+        onError?.({ message: error.message });
+      }
+    } finally {
+      onFinally?.();
+    }
+  };
+
+  const process: RunFixturePromise = trigger() as RunFixturePromise;
+  process.abort = () => controller.abort();
+  return process;
+};
+
 export async function uploadFiles(files: File[], onProgress?: (progress: number) => void): Promise<UploadResponse> {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file));

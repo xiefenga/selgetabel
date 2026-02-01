@@ -1,0 +1,44 @@
+id: "08-student-exam"
+name: "学生考试成绩"
+description: "学生考试成绩数据，用于测试加权计算、条件判断、分组透视等场景"
+
+datasets:
+  - file: "students_performance.xlsx"
+    description: "学生成绩表"
+
+cases:
+  - id: "weighted-score"
+    name: "加权平均分计算"
+    prompt: |
+      计算综合成绩：math score 占 40%，reading score 占 30%，writing score 占 30%。结果写入原表新列 Weighted_Score，保留 1 位小数。
+    tags: ["加权计算", "格式化"]
+
+  - id: "pass-fail"
+    name: "及格判断逻辑"
+    prompt: |
+      如果 math score > 60 且 reading score > 60 且 writing score > 60，标记为 'Pass'，否则为 'Fail'。结果写入原表新列 Exam_Status。
+    tags: ["条件判断", "AND逻辑"]
+
+  - id: "education-pivot"
+    name: "父母学历透视"
+    prompt: |
+      按 parental level of education 分组，计算三门课程的平均分。结果生成一个新表，并按数学平均分降序排列。
+    tags: ["分组", "多列平均"]
+
+  - id: "top-students"
+    name: "优等生筛选"
+    prompt: |
+      筛选出 gender 为 'female' 且 Weighted_Score（场景A计算的列）大于 90 的学生。结果写入一个新 Sheet。
+    tags: ["筛选", "依赖前序"]
+
+  - id: "subject-diff"
+    name: "偏科分析"
+    prompt: |
+      计算数学成绩与阅读成绩的差值（绝对值）。结果写入原表新列 Diff_Math_Read。筛选出差值大于 20 分的学生，写入新 Sheet。
+    tags: ["计算", "绝对值", "筛选"]
+
+  - id: "grade-level"
+    name: "成绩等级划分"
+    prompt: |
+      根据 math score 划分等级：>=90 为 'A', >=80 为 'B', >=70 为 'C', 其余为 'D'。结果写入原表新列 Math_Grade。
+    tags: ["分箱", "等级划分"]

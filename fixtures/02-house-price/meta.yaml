@@ -1,0 +1,126 @@
+id: "02-house-price"
+name: "房价预测数据"
+description: "房屋销售数据，用于测试数学计算、条件标签、筛选统计等场景"
+
+datasets:
+  - file: "house_price.xlsx"
+    description: "房屋销售信息表"
+    columns:
+      - A: "Id"
+      - B: "MSSubClass"
+      - C: "MSZoning"
+      - D: "LotFrontage"
+      - E: "LotArea"
+      - F: "Street"
+      - G: "Alley"
+      - H: "LotShape"
+      - I: "LandContour"
+      - J: "Utilities"
+      - K: "LotConfig"
+      - L: "LandSlope"
+      - M: "Neighborhood"
+      - N: "Condition1"
+      - O: "Condition2"
+      - P: "BldgType"
+      - Q: "HouseStyle"
+      - R: "OverallQual"
+      - S: "OverallCond"
+      - T: "YearBuilt"
+      - U: "YearRemodAdd"
+      - V: "RoofStyle"
+      - W: "RoofMatl"
+      - X: "Exterior1st"
+      - Y: "Exterior2nd"
+      - Z: "MasVnrType"
+      - AA: "MasVnrArea"
+      - AB: "ExterQual"
+      - AC: "ExterCond"
+      - AD: "Foundation"
+      - AE: "BsmtQual"
+      - AF: "BsmtCond"
+      - AG: "BsmtExposure"
+      - AH: "BsmtFinType1"
+      - AI: "BsmtFinSF1"
+      - AJ: "BsmtFinType2"
+      - AK: "BsmtFinSF2"
+      - AL: "BsmtUnfSF"
+      - AM: "TotalBsmtSF"
+      - AN: "Heating"
+      - AO: "HeatingQC"
+      - AP: "CentralAir"
+      - AQ: "Electrical"
+      - AR: "1stFlrSF"
+      - AS: "2ndFlrSF"
+      - AT: "LowQualFinSF"
+      - AU: "GrLivArea"
+      - AV: "BsmtFullBath"
+      - AW: "BsmtHalfBath"
+      - AX: "FullBath"
+      - AY: "HalfBath"
+      - AZ: "BedroomAbvGr"
+      - BA: "KitchenAbvGr"
+      - BB: "KitchenQual"
+      - BC: "TotRmsAbvGrd"
+      - BD: "Functional"
+      - BE: "Fireplaces"
+      - BF: "FireplaceQu"
+      - BG: "GarageType"
+      - BH: "GarageYrBlt"
+      - BI: "GarageFinish"
+      - BJ: "GarageCars"
+      - BK: "GarageArea"
+      - BL: "GarageQual"
+      - BM: "GarageCond"
+      - BN: "PavedDrive"
+      - BO: "WoodDeckSF"
+      - BP: "OpenPorchSF"
+      - BQ: "EnclosedPorch"
+      - BR: "3SsnPorch"
+      - BS: "ScreenPorch"
+      - BT: "PoolArea"
+      - BU: "PoolQC"
+      - BV: "Fence"
+      - BW: "MiscFeature"
+      - BX: "MiscVal"
+      - BY: "MoSold"
+      - BZ: "YrSold"
+      - CA: "SaleType"
+      - CB: "SaleCondition"
+      - CC: "SalePrice"
+
+cases:
+  - id: "cross-column-calc"
+    name: "跨列数学计算"
+    prompt: |
+      计算每套房子的总使用面积。请将 TotalBsmtSF（地下室面积）与 GrLivArea（地上居住面积）相加。结果写入原表最后一列，列名命名为 Total_Usable_Area。
+    tags: ["计算", "新增列"]
+
+  - id: "business-label"
+    name: "业务逻辑打标签"
+    prompt: |
+      我想对房子进行分类。如果 YearBuilt 大于 2000 且 SalePrice 大于 200,000，则标记为'优质新房'，否则标记为'普通'。请在 SalePrice 列旁边插入新列 House_Category 存放该标记。
+    tags: ["条件判断", "标签", "新增列"]
+
+  - id: "filter-export"
+    name: "按街区筛选导出"
+    prompt: |
+      筛选出 Neighborhood 为 'CollgCr' 且 SalePrice 低于 150,000 的所有房屋数据。将结果写入一个名为'CollgCr低价房'的新 Sheet。
+    tags: ["筛选", "新Sheet"]
+
+  - id: "basic-stats"
+    name: "基础统计概览"
+    prompt: |
+      请计算整个数据集中 SalePrice 的平均值、中位数、最高价和最低价。将这四个统计结果写入一个新 Sheet，并标注对应的指标名称。
+    tags: ["统计", "聚合"]
+
+  - id: "unit-price"
+    name: "单价计算"
+    prompt: |
+      计算每平方英尺的售价。用 SalePrice 除以 LotArea。结果写入原表新列 Price_Per_SF，保留两位小数。
+    tags: ["计算", "格式化"]
+
+  - id: "fill-zero"
+    name: "缺失值特定填充"
+    prompt: |
+      LotFrontage 列有很多空值，请用数字 0 统一填充这些空值。直接修改原表。
+    tags: ["缺失值", "填充"]

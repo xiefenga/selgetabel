@@ -7,7 +7,7 @@ from fastapi import HTTPException, Depends, Request, Response, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.llm_client import LLMClient
+from app.engine.llm_client import LLMClient
 from app.core.database import get_db
 from app.core.jwt import verify_token, create_access_token
 from app.core.config import settings

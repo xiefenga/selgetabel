@@ -1,0 +1,135 @@
+# LLM Excel 测试数据索引
+# 此文件用于管理所有测试场景和分组
+
+# =============================================================================
+# 测试分组定义
+# =============================================================================
+groups:
+  - id: "basic"
+    name: "基础验证测试"
+    description: |
+      测试系统对各个领域数据的清洗、特征提取、基础统计及格式转换能力。
+    scenarios:
+      - "01-titanic"
+      - "02-house-price"
+      - "03-netflix"
+      - "04-superstore"
+
+  - id: "advanced"
+    name: "进阶逻辑测试"
+    description: |
+      覆盖复杂嵌套逻辑、正则表达式提取、时序处理及统计学计算。
+    scenarios:
+      - "05-fifa22"
+      - "06-pokemon"
+      - "07-heart-disease"
+      - "08-student-exam"
+      - "09-kickstarter"
+      - "10-loan"
+      - "11-ibm-hr"
+
+  - id: "multi-table"
+    name: "多表/跨表关联测试"
+    description: |
+      测试 VLOOKUP/JOIN 逻辑、跨表计算及不同键名匹配。需严格依据表结构执行。
+    scenarios:
+      - "12-brazil-ecommerce"
+      - "13-happiness-index"
+      - "14-f1-racing"
+
+# =============================================================================
+# 场景详情
+# =============================================================================
+scenarios:
+  # ---------------------------------------------------------------------------
+  # 第一部分：基础验证测试 (01-04)
+  # ---------------------------------------------------------------------------
+  - id: "01-titanic"
+    name: "泰坦尼克号生存预测"
+    group: "basic"
+    path: "01-titanic"
+    tags: ["缺失值", "文本提取", "筛选", "分组"]
+
+  - id: "02-house-price"
+    name: "房价预测数据"
+    group: "basic"
+    path: "02-house-price"
+    tags: ["数学计算", "条件标签", "筛选", "统计"]
+
+  - id: "03-netflix"
+    name: "Netflix 影视剧列表"
+    group: "basic"
+    path: "03-netflix"
+    tags: ["日期处理", "文本筛选", "数据提取", "分组"]
+
+  - id: "04-superstore"
+    name: "超市销售数据"
+    group: "basic"
+    path: "04-superstore"
+    tags: ["分组汇总", "百分比", "日期处理", "排名"]
+
+  # ---------------------------------------------------------------------------
+  # 第二部分：进阶逻辑测试 (05-11)
+  # ---------------------------------------------------------------------------
+  - id: "05-fifa22"
+    name: "FIFA 22 球员数据"
+    group: "advanced"
+    path: "05-fifa22"
+    tags: ["条件标签", "筛选排序", "数据清洗", "分组"]
+
+  - id: "06-pokemon"
+    name: "精灵宝可梦数据"
+    group: "advanced"
+    path: "06-pokemon"
+    tags: ["排序", "计算", "分组", "筛选"]
+
+  - id: "07-heart-disease"
+    name: "心脏病预测数据"
+    group: "advanced"
+    path: "07-heart-disease"
+    tags: ["字典映射", "分组", "分箱", "筛选"]
+
+  - id: "08-student-exam"
+    name: "学生考试成绩"
+    group: "advanced"
+    path: "08-student-exam"
+    tags: ["加权计算", "条件判断", "分组", "筛选"]
+
+  - id: "09-kickstarter"
+    name: "Kickstarter 众筹项目数据"
+    group: "advanced"
+    path: "09-kickstarter"
+    tags: ["数据清洗", "计算", "日期处理", "分组"]
+
+  - id: "10-loan"
+    name: "个人贷款资格数据"
+    group: "advanced"
+    path: "10-loan"
+    tags: ["计算", "缺失值", "单位转换", "分组"]
+
+  - id: "11-ibm-hr"
+    name: "IBM 员工流失与绩效数据"
+    group: "advanced"
+    path: "11-ibm-hr"
+    tags: ["字典映射", "计算", "筛选", "分组"]
+
+  # ---------------------------------------------------------------------------
+  # 第三部分：多表/跨表关联测试 (12-14)
+  # ---------------------------------------------------------------------------
+  - id: "12-brazil-ecommerce"
+    name: "巴西电商订单与客户"
+    group: "multi-table"
+    path: "12-brazil-ecommerce"
+    tags: ["跨表关联", "VLOOKUP", "分组", "筛选"]
+
+  - id: "13-happiness-index"
+    name: "全球幸福指数报告"
+    group: "multi-table"
+    path: "13-happiness-index"
+    tags: ["跨表计算", "对比分析", "分组", "筛选"]
+
+  - id: "14-f1-racing"
+    name: "F1 一级方程式赛车数据"
+    group: "multi-table"
+    path: "14-f1-racing"
+    tags: ["跨表关联", "筛选", "分组", "统计"]

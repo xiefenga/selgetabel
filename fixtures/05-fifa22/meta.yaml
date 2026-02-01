@@ -1,0 +1,44 @@
+id: "05-fifa22"
+name: "FIFA 22 球员数据"
+description: "FIFA 22 足球游戏球员数据，用于测试条件标签、筛选排序、数据清洗等场景"
+
+datasets:
+  - file: "players_22.xlsx"
+    description: "球员属性数据表"
+
+cases:
+  - id: "complex-label"
+    name: "复合逻辑打标签"
+    prompt: |
+      我想筛选潜力新星。请检查数据，如果球员年龄 Age 小于 23 且潜力值 Potential 大于 85，则标记为 'Superstar'，否则标记为 'Normal'。请在 Name 列之后插入一个新列 Player_Status。
+    tags: ["条件判断", "标签"]
+
+  - id: "club-filter"
+    name: "特定范围筛选与排序"
+    prompt: |
+      找出 'FC Barcelona'（巴塞罗那俱乐部）的所有球员，并按照 Overall（综合能力）从高到低排序。将结果写入一个名为'巴萨球员名单'的新 Sheet。
+    tags: ["筛选", "排序", "新Sheet"]
+
+  - id: "nationality-stats"
+    name: "国籍分布统计"
+    prompt: |
+      统计数据集中每个 Nationality（国籍）的球员数量，并按数量从高到低排序，只取前 10 个国家。结果生成一个新表。
+    tags: ["分组", "统计", "TOP N"]
+
+  - id: "wage-clean"
+    name: "薪资清洗 (K/M 转换)"
+    prompt: |
+      Wage_EUR 列目前可能包含 '€' 符号或 'K' 后缀（如 €150K）。请去除符号并将 K 转换为乘以 1000 的数字。直接修改原表该列。
+    tags: ["数据清洗", "格式转换"]
+
+  - id: "bmi-calc"
+    name: "身体质量指数 (BMI) 计算"
+    prompt: |
+      假设表中有 Weight_kg 和 Height_cm。请计算 BMI = Weight / (Height/100)^2。结果写入新列 BMI，保留 1 位小数。
+    tags: ["计算", "公式"]
+
+  - id: "club-avg"
+    name: "俱乐部平均能力分析"
+    prompt: |
+      按 Club 分组，计算 Overall 的平均值，筛选出平均分大于 80 的豪门俱乐部。结果生成一个新表。
+    tags: ["分组", "筛选", "平均值"]

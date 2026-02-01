@@ -1,0 +1,57 @@
+id: "01-titanic"
+name: "泰坦尼克号生存预测"
+description: "泰坦尼克号乘客数据，用于测试缺失值处理、文本提取、筛选排序等场景"
+
+datasets:
+  - file: "titanic.xlsx"
+    description: "乘客信息表"
+    columns:
+      - A: "PassengerId"
+      - B: "Survived"
+      - C: "Pclass"
+      - D: "Name"
+      - E: "Sex"
+      - F: "Age"
+      - G: "SibSp"
+      - H: "Parch"
+      - I: "Ticket"
+      - J: "Fare"
+      - K: "Cabin"
+      - L: "Embarked"
+
+cases:
+  - id: "missing-value"
+    name: "缺失值处理"
+    prompt: |
+      检查表格中的 Age 列，如果发现空值，请用现有数据的平均年龄进行填充。结果写入原表，不要删除任何行。
+    tags: ["缺失值", "填充"]
+
+  - id: "text-extraction"
+    name: "文本特征提取"
+    prompt: |
+      根据 Name 列中的称谓（如 Mr., Mrs., Miss.），提取出乘客的头衔。请在 Name 列之后插入一个名为 Title 的新列来存放提取结果。
+    tags: ["文本处理", "新增列"]
+
+  - id: "filter-sort"
+    name: "多条件筛选与排序"
+    prompt: |
+      筛选出所有 Sex 为 female 且 Survived 为 1（生还）的乘客，并按 Age 从大到小排序。将结果写入一个名为'生还女性'的新 Sheet。
+    tags: ["筛选", "排序", "新Sheet"]
+
+  - id: "pivot-stats"
+    name: "分组透视统计"
+    prompt: |
+      我想看不同等级船舱的平均票价。请按 Pclass 列分组，计算 Fare 的平均值。结果生成一个新表，包含两列：Pclass 和 Average_Fare。
+    tags: ["分组", "聚合", "平均值"]
+
+  - id: "family-size"
+    name: "家庭规模计算"
+    prompt: |
+      计算每个乘客的家庭成员总数。请将 SibSp（兄弟姐妹/配偶）与 Parch（父母/子女）相加，再加上 1（自己）。结果写入原表新列 Family_Size。
+    tags: ["计算", "新增列"]
+
+  - id: "embarked-fill"
+    name: "登船港口清洗"
+    prompt: |
+      Embarked 列有少量缺失值，请全部用出现频率最高的 'S' 进行填充。直接修改原表。
+    tags: ["缺失值", "填充"]

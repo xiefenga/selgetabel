@@ -6,14 +6,14 @@ from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
-from app.core.models import TableCollection
-from app.core.excel_parser import ExcelParser
-from app.core.llm_client import LLMClient
-from app.core.executor import execute_operations
-from app.core.excel_generator import generate_formulas, format_formula_output
+from app.engine.models import FileCollection
+from app.engine.excel_parser import ExcelParser
+from app.engine.llm_client import LLMClient
+from app.engine.executor import execute_operations
+from app.engine.excel_generator import generate_formulas, format_formula_output
 
 
-def load_excel_files(file_paths: List[str]) -> TableCollection:
+def load_excel_files(file_paths: List[str]) -> FileCollection:
     """
     加载 Excel 文件
 
@@ -21,9 +21,9 @@ def load_excel_files(file_paths: List[str]) -> TableCollection:
         file_paths: Excel 文件路径列表
 
     Returns:
-        TableCollection 对象
+        FileCollection 对象
     """
-    tables = TableCollection()
+    collection = FileCollection()
 
     for file_path in file_paths:
         file_path = Path(file_path)
@@ -36,49 +36,55 @@ def load_excel_files(file_paths: List[str]) -> TableCollection:
             print(f"\n📄 文件: {file_path.name}")
             file_info = ExcelParser.get_file_info(file_path)
 
+            # 使用文件名作为 file_id（简化 CLI）
+            file_id = file_path.stem
+
             if len(file_info['sheets']) > 1:
                 print(f"   包含 {len(file_info['sheets'])} 个 sheet:")
                 for sheet_name, info in file_info['sheets'].items():
                     print(f"   - {sheet_name}: {info['rows']} 行 x {info['columns']} 列")
-
-                sheet_tables = ExcelParser.parse_file_all_sheets(file_path)
-                for table_name in sheet_tables.get_table_names():
-                    tables.add_table(sheet_tables.get_table(table_name))
             else:
                 sheet_name = list(file_info['sheets'].keys())[0]
                 info = file_info['sheets'][sheet_name]
                 print(f"   {info['rows']} 行 x {info['columns']} 列")
 
-                table = ExcelParser.parse_file(file_path)
-                tables.add_table(table)
+            # 解析整个文件（包含所有 sheets）
+            file_collection = ExcelParser.parse_file_all_sheets(file_path, file_id=file_id)
+
+            # 添加到总集合
+            for excel_file in file_collection:
+                collection.add_file(excel_file)
 
             print(f"   ✅ 解析成功")
 
         except Exception as e:
             print(f"   ❌ 解析失败: {e}")
 
-    return tables
+    return collection
 
 
-def display_schemas(tables: TableCollection):
-    """显示表结构"""
+def display_schemas(tables: FileCollection):
+    """显示表结构（两层）"""
     print("\n" + "=" * 60)
-    print("📊 已加载的表:")
+    print("📊 已加载的文件和 Sheet:")
     print("=" * 60)
 
     schemas = tables.get_schemas()
-    for table_name, columns in schemas.items():
-        print(f"\n表名: {table_name}")
-        column_display = ", ".join([
-            f"{col_letter}({col_name})"
-            for col_letter, col_name in columns.items()
-        ])
-        print(f"字段: {column_display}")
+    for file_id, file_sheets in schemas.items():
+        excel_file = tables.get_file(file_id)
+        print(f"\n文件: {excel_file.filename} (ID: {file_id})")
+        for sheet_name, columns in file_sheets.items():
+            print(f"  Sheet: {sheet_name}")
+            column_display = ", ".join([
+                f"{col_letter}({col_name})"
+                for col_letter, col_name in columns.items()
+            ])
+            print(f"    字段: {column_display}")
 
 
 def process_requirement_two_step(
     requirement: str,
-    tables: TableCollection,
+    tables: FileCollection,
     llm_client: LLMClient
 ):
     """
@@ -88,7 +94,12 @@ def process_requirement_two_step(
     第二步：生成操作描述
     """
     schemas = tables.get_schemas()
-    available_tables = tables.get_table_names()
+
+    # 构建 file_sheets 映射
+    file_sheets = {}
+    for file_id in tables.get_file_ids():
+        excel_file = tables.get_file(file_id)
+        file_sheets[file_id] = excel_file.get_sheet_names()
 
     # ==================== 第一步：需求分析 ====================
     print("\n" + "=" * 60)
@@ -138,8 +149,8 @@ def process_requirement_two_step(
         return
 
     # 解析和验证
-    from app.core.parser import parse_and_validate
-    operations, parse_errors = parse_and_validate(json_str, available_tables)
+    from app.engine.parser import parse_and_validate
+    operations, parse_errors = parse_and_validate(json_str, file_sheets)
 
     if parse_errors:
         print("\n⚠️  解析错误:")
@@ -161,11 +172,15 @@ def process_requirement_two_step(
                 print(f"   {var_name} = {value}")
 
         if result.new_columns:
-            print("\n📋 新增列:")
-            for table_name, columns in result.new_columns.items():
-                for col_name, values in columns.items():
-                    preview = values[:5] if len(values) > 5 else values
-                    print(f"   {table_name}.{col_name}: {preview}...")
+            print("\n📋 新增列（三层结构）:")
+            for file_id, sheets in result.new_columns.items():
+                excel_file = tables.get_file(file_id)
+                print(f"   文件: {excel_file.filename}")
+                for sheet_name, columns in sheets.items():
+                    print(f"     Sheet: {sheet_name}")
+                    for col_name, values in columns.items():
+                        preview = values[:5] if len(values) > 5 else values
+                        print(f"       {col_name}: {preview}...")
 
         if result.errors:
             print("\n⚠️  执行错误:")
@@ -194,7 +209,7 @@ def process_requirement_two_step(
         print("💾 第五步：导出结果")
         print("=" * 60)
 
-        # 将新增列应用到表中
+        # 将新增列应用到表中（三层结构）
         tables.apply_new_columns(result.new_columns)
 
         # 生成输出文件名
@@ -206,10 +221,13 @@ def process_requirement_two_step(
             tables.export_to_excel(output_file)
             print(f"\n✅ 已导出到: {output_file}")
 
-            # 显示导出的表
-            for table_name in result.new_columns.keys():
-                table = tables.get_table(table_name)
-                print(f"   - {table_name}: {table.row_count()} 行 x {len(table.get_columns())} 列")
+            # 显示导出的文件和 sheet
+            for file_id, sheets in result.new_columns.items():
+                excel_file = tables.get_file(file_id)
+                print(f"   文件: {excel_file.filename}")
+                for sheet_name in sheets.keys():
+                    table = tables.get_table(file_id, sheet_name)
+                    print(f"     - {sheet_name}: {table.row_count()} 行 x {len(table.get_columns())} 列")
         except Exception as e:
             print(f"\n❌ 导出失败: {e}")
 
@@ -240,8 +258,8 @@ def main():
 
     tables = load_excel_files(excel_files)
 
-    if not tables.get_table_names():
-        print("\n⚠️  没有成功加载任何表")
+    if not tables.get_file_ids():
+        print("\n⚠️  没有成功加载任何文件")
         return
 
     display_schemas(tables)

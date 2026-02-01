@@ -1,16 +1,9 @@
-import { useState, useMemo } from "react";
-import {
-  ChevronRight,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  FileSpreadsheet,
-  Brain,
-  Code2,
-  Play,
-  Sparkles
-} from "lucide-react";
+import { Streamdown } from 'streamdown';
+import { useState } from "react";
+import { ChevronRight, Loader2, CheckCircle2, XCircle, FileSpreadsheet, Brain, Code2, Play, Sparkles } from "lucide-react";
+
 import { cn } from "~/lib/utils";
+
 import type {
   AssistantMessage as AssistantMessageType,
   StepRecord,
@@ -20,12 +13,8 @@ import type {
   LoadStepOutput,
   AnalyzeStepOutput,
   GenerateStepOutput,
-  ExecuteStepOutput,
+  ExecuteStepOutput
 } from "../types";
-
-interface Props {
-  message: AssistantMessageType;
-}
 
 /** 步骤配置 */
 const STEP_CONFIG: Record<StepName, { label: string; icon: React.ReactNode }> = {
@@ -47,41 +36,23 @@ const STEP_CONFIG: Record<StepName, { label: string; icon: React.ReactNode }> = 
   },
 };
 
-/** 步骤顺序 */
-const STEP_ORDER: StepName[] = ["load", "analyze", "generate", "execute"];
-
-/** 获取每个步骤的最终状态 */
-function getLatestStepsMap(steps: StepRecord[]): Partial<Record<StepName, StepRecord>> {
-  return steps.reduce(
-    (acc, step) => {
-      const stepName = step.step as string;
-      if (STEP_ORDER.includes(stepName as StepName)) {
-        acc[stepName as StepName] = step;
-      }
-      return acc;
-    },
-    {} as Partial<Record<StepName, StepRecord>>,
-  );
-}
-
 /** 单个步骤项组件 */
 interface StepItemProps {
-  stepName: StepName;
-  record?: StepRecord;
+  record: StepRecord;
   defaultExpanded?: boolean;
 }
 
-const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) => {
+const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const config = STEP_CONFIG[stepName];
 
-  // 步骤状态
-  const status = record?.status;
+  const stepName = record.step;
+  const config = STEP_CONFIG[stepName];
+  const status = record.status;
+
   const isRunning = status === "running";
   const isStreaming = status === "streaming";
   const isDone = status === "done";
   const isError = status === "error";
-  const isPending = !record;
 
   // 渲染状态图标
   const renderStatusIcon = () => {
@@ -97,86 +68,130 @@ const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) 
     return <div className="w-4 h-4 rounded-full border-2 border-gray-300" />;
   };
 
+  // 渲染流式内容（根据步骤类型使用不同组件）
+  const renderStreamContent = (streamContent: string) => {
+    if (!streamContent) return null;
+
+    if (stepName === "load") {
+      return (
+        <div className="text-sm text-gray-600">
+          {streamContent}
+          <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
+        </div>
+      );
+    }
+    if (stepName === "analyze") {
+      return (
+        <div className="relative">
+          <Streamdown>{streamContent}</Streamdown>
+          <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse align-middle" />
+        </div>
+      );
+    }
+    if (stepName === "generate") {
+      return (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">正在生成操作...</p>
+          <pre className="bg-gray-50 rounded-lg p-3 text-xs overflow-x-auto">
+            {streamContent}
+            <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
+          </pre>
+        </div>
+      );
+    }
+    if (stepName === "execute") {
+      return (
+        <div className="text-sm text-gray-600">
+          {streamContent}
+          <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
+        </div>
+      );
+    }
+    return (
+      <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+        {streamContent}
+        <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
+      </div>
+    );
+  };
+
+  // 渲染完成内容（根据步骤类型使用不同组件）
+  const renderDoneContent = (doneRecord: DoneStepRecord) => {
+    if (stepName === "load") {
+      const output = doneRecord.output as LoadStepOutput;
+      const schemas = output?.schemas || {};
+      const tableNames = Object.keys(schemas);
+      return (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">
+            已加载 {tableNames.length} 个表格
+          </p>
+          {tableNames.map((tableName) => {
+            const columns = schemas[tableName] || {};
+            const columnNames = Object.values(columns);
+            return (
+              <div key={tableName} className="bg-gray-50 rounded-lg p-3">
+                <p className="font-medium text-sm text-gray-800 mb-1">
+                  {tableName}
+                </p>
+                <p className="text-xs text-gray-500 line-clamp-2">
+                  列：{columnNames.join("、")}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (stepName === "analyze") {
+      const output = doneRecord.output as AnalyzeStepOutput;
+      return <Streamdown>{output?.content}</Streamdown>;
+    }
+
+    if (stepName === "generate") {
+      const output = doneRecord.output as GenerateStepOutput;
+      const operations = output?.operations || [];
+      return (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">
+            生成了 {operations.length} 个操作
+          </p>
+          <pre className="bg-gray-50 rounded-lg p-3 text-xs overflow-x-auto">
+            {JSON.stringify(operations, null, 2)}
+          </pre>
+        </div>
+      );
+    }
+
+    if (stepName === "execute") {
+      const output = doneRecord.output as ExecuteStepOutput;
+      const { formulas, output_file } = output;
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
+            <FileSpreadsheet className="w-4 h-4" />
+            <span className="text-sm font-medium">{output_file}</span>
+          </div>
+          <pre className='text-sm'>
+            {formulas}
+          </pre>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   // 获取内容
   const getContent = () => {
     if (isStreaming) {
-      const streamRecord = record as StreamingStepRecord;
-      return streamRecord.streamContent || "";
+      return renderStreamContent((record as StreamingStepRecord).streamContent || "");
     }
     if (isDone) {
-      const doneRecord = record as DoneStepRecord;
-      if (stepName === "load") {
-        const output = doneRecord.output as LoadStepOutput;
-        const schemas = output?.schemas || {};
-        const tableNames = Object.keys(schemas);
-        return (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-600">
-              已加载 {tableNames.length} 个表格
-            </p>
-            {tableNames.map((tableName) => {
-              const columns = schemas[tableName] || {};
-              const columnNames = Object.values(columns);
-              return (
-                <div key={tableName} className="bg-gray-50 rounded-lg p-3">
-                  <p className="font-medium text-sm text-gray-800 mb-1">
-                    {tableName}
-                  </p>
-                  <p className="text-xs text-gray-500 line-clamp-2">
-                    列：{columnNames.join("、")}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        );
-      }
-      if (stepName === "analyze") {
-        const output = doneRecord.output as AnalyzeStepOutput;
-        return (
-          <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-            {output?.content || ""}
-          </div>
-        );
-      }
-      if (stepName === "generate") {
-        const output = doneRecord.output as GenerateStepOutput;
-        const operations = output?.operations || [];
-        return (
-          <div className="space-y-2">
-            <p className="text-sm text-gray-600">
-              生成了 {operations.length} 个操作
-            </p>
-            <pre className="bg-gray-50 rounded-lg p-3 text-xs overflow-x-auto">
-              {JSON.stringify(operations, null, 2)}
-            </pre>
-          </div>
-        );
-      }
-      if (stepName === "execute") {
-        const output = doneRecord.output as ExecuteStepOutput;
-        const { formulas, output_file } = output || {};
-        return (
-          <div className="space-y-3">
-            {output_file && (
-              <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="text-sm font-medium">{output_file}</span>
-              </div>
-            )}
-            {formulas && formulas.length > 0 && (
-              <div>
-                <p className="text-sm text-gray-600 mb-2">生成的公式：</p>
-                <pre className="bg-gray-50 rounded-lg p-3 text-xs overflow-x-auto">
-                  {JSON.stringify(formulas, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        );
-      }
+      return renderDoneContent(record as DoneStepRecord);
     }
-    if (isError && record && "error" in record) {
+    if (isError && "error" in record) {
       return (
         <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
           {record.error?.message || "发生错误"}
@@ -187,24 +202,13 @@ const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) 
   };
 
   const content = getContent();
-  const hasContent = content !== null && content !== "";
-
-  // 如果步骤还没开始，显示简化版
-  if (isPending) {
-    return (
-      <div className="flex items-center gap-3 px-3 py-2 opacity-50">
-        {renderStatusIcon()}
-        <span className="text-sm text-gray-600">{config.icon}</span>
-        <span className="text-sm text-gray-500">{config.label}</span>
-      </div>
-    );
-  }
+  const hasContent = content !== null;
 
   return (
     <div className={cn(
       "border rounded-lg transition-all",
       isError ? "border-red-200 bg-red-50/50" : "border-gray-200 bg-white",
-      isRunning || isStreaming ? "ring-2 ring-emerald-500/20" : ""
+      (isRunning || isStreaming) && "ring-2 ring-emerald-500/20"
     )}>
       {/* 头部 */}
       <button
@@ -230,8 +234,7 @@ const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) 
           "flex items-center justify-center w-8 h-8 rounded-full",
           isDone && "bg-emerald-100 text-emerald-700",
           isError && "bg-red-100 text-red-600",
-          (isRunning || isStreaming) && "bg-emerald-100 text-emerald-700",
-          isPending && "bg-gray-100 text-gray-500"
+          (isRunning || isStreaming) && "bg-emerald-100 text-emerald-700"
         )}>
           {config.icon}
         </span>
@@ -241,8 +244,7 @@ const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) 
           "flex-1 text-sm font-medium",
           isDone && "text-gray-900",
           isError && "text-red-700",
-          (isRunning || isStreaming) && "text-emerald-700",
-          isPending && "text-gray-500"
+          (isRunning || isStreaming) && "text-emerald-700"
         )}>
           {config.label}
           {(isRunning || isStreaming) && (
@@ -258,16 +260,7 @@ const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) 
       {isExpanded && hasContent && (
         <div className="px-4 pb-4 pl-16">
           <div className="border-t border-gray-100 pt-3">
-            {typeof content === "string" ? (
-              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-                {content}
-                {isStreaming && (
-                  <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
-                )}
-              </div>
-            ) : (
-              content
-            )}
+            {content}
           </div>
         </div>
       )}
@@ -275,20 +268,24 @@ const StepItem = ({ stepName, record, defaultExpanded = false }: StepItemProps) 
   );
 };
 
+interface Props {
+  message: AssistantMessageType;
+}
+
 /** 助手消息组件 */
 const AssistantMessage = ({ message }: Props) => {
   const { steps, status, error } = message;
 
-  // 获取各步骤的最终状态
-  const latestSteps = useMemo(() => getLatestStepsMap(steps), [steps]);
-
   // 判断是否有任何步骤在进行中
-  const hasActiveStep = STEP_ORDER.some(stepName => {
-    const record = latestSteps[stepName];
-    return record?.status === "running" || record?.status === "streaming";
-  });
+  const hasActiveStep = steps.some(
+    (record) => record.status === "running" || record.status === "streaming"
+  );
 
-  // 全局错误（会话级/系统级错误）
+  // 判断最后一个步骤是否为 execute 且已完成
+  const lastStep = steps[steps.length - 1];
+  const isExecuteDone = lastStep?.step === "execute" && lastStep?.status === "done";
+
+  // 全局错误（会话级/系统级错误，无步骤记录）
   if (status === "error" && error && steps.length === 0) {
     return (
       <div className="rounded-lg bg-red-50 border border-red-200 p-4">
@@ -301,7 +298,7 @@ const AssistantMessage = ({ message }: Props) => {
     );
   }
 
-  // 待处理状态
+  // 待处理状态（尚未开始任何步骤）
   if (status === "pending" && steps.length === 0) {
     return (
       <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
@@ -320,22 +317,14 @@ const AssistantMessage = ({ message }: Props) => {
 
   return (
     <div className="space-y-3">
-      {/* 渲染步骤列表 */}
-      {STEP_ORDER.map((stepName) => {
-        const record = latestSteps[stepName];
-        // 只显示已开始的步骤，或者正在流式处理时显示下一个步骤
-        if (!record) return null;
-
-        return (
-          <StepItem
-            key={stepName}
-            stepName={stepName}
-            record={record}
-            // analyze 步骤默认展开（因为是主要内容）
-            defaultExpanded={stepName === "analyze" || stepName === "execute"}
-          />
-        );
-      })}
+      {/* 渲染步骤列表 - 直接遍历 steps 数组 */}
+      {steps.map((record, index) => (
+        <StepItem
+          key={`${record.step}-${index}`}
+          record={record}
+          defaultExpanded={record.step === "analyze" || record.step === "execute"}
+        />
+      ))}
 
       {/* 全局错误提示 */}
       {status === "error" && error && (
@@ -348,7 +337,7 @@ const AssistantMessage = ({ message }: Props) => {
       )}
 
       {/* 完成提示 */}
-      {status === "done" && !hasActiveStep && latestSteps.execute?.status === "done" && (
+      {status === "done" && !hasActiveStep && isExecuteDone && (
         <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
           <div className="flex items-center gap-2 text-emerald-700">
             <CheckCircle2 className="w-4 h-4" />

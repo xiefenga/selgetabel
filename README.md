@@ -141,4 +141,4 @@ docker compose down -v
 
 ## 相关文档
 
-- 后端更详细的说明在 `apps/api/README.md`、`apps/api/SPEC.md`、`apps/api/USAGE.md`
+- 后端更详细的说明在 `apps/api/README.md`、`docs/OPERATION_SPEC.md`、`apps/api/USAGE.md`

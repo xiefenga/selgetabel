@@ -1,0 +1,44 @@
+id: "06-pokemon"
+name: "精灵宝可梦数据"
+description: "精灵宝可梦属性数据，用于测试排序、计算、分组统计等场景"
+
+datasets:
+  - file: "pokemon.xlsx"
+    description: "宝可梦属性数据表"
+
+cases:
+  - id: "multi-sort"
+    name: "多重排序逻辑"
+    prompt: |
+      找出最强的神兽。筛选出 Legendary 列为 True 的所有行，并按照 Attack 从高到低排序，如果攻击力相同则按 Defense 从高到低排序。结果写入原表。
+    tags: ["筛选", "多重排序"]
+
+  - id: "custom-formula"
+    name: "自定义公式计算"
+    prompt: |
+      我想计算宝可梦的'物理耐久度'。请将 HP 和 Defense 相加，结果写入新列 Physical_Tankiness，并放在 Defense 列的右边。
+    tags: ["计算", "新增列"]
+
+  - id: "type-analysis"
+    name: "主属性强度分析"
+    prompt: |
+      按 Type 1 进行分组，计算每种属性的 Attack 平均值。结果生成一个新表，按平均攻击力降序排列。
+    tags: ["分组", "平均值", "排序"]
+
+  - id: "gen1-speed"
+    name: "第一代高速精灵"
+    prompt: |
+      筛选出 Generation 为 1 且 Speed 大于 100 的第一代高速宝可梦。结果写入一个新 Sheet。
+    tags: ["筛选", "新Sheet"]
+
+  - id: "total-stats"
+    name: "种族值总和计算"
+    prompt: |
+      计算六维数据总和。将 HP, Attack, Defense, Sp. Atk, Sp. Def, Speed 六列相加。结果写入原表新列 Total_Stats_Calc。
+    tags: ["计算", "多列求和"]
+
+  - id: "name-length"
+    name: "名称长度分析"
+    prompt: |
+      计算 Name 列中每个宝可梦名字的字符长度。结果写入原表新列 Name_Len。然后筛选出名字长度超过 10 个字符的行，写入新 Sheet。
+    tags: ["文本处理", "筛选"]

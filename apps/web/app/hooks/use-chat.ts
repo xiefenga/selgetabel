@@ -17,6 +17,7 @@ import type {
   RunningStepRecord,
   DoneStepRecord,
   ErrorStepRecord,
+  ExecuteStepOutput,
 } from '~/components/llm-chat/message-list/types';
 import { useAuthStore } from '~/stores/auth';
 
@@ -27,7 +28,6 @@ export interface InputType {
   files: UserMessageAttachment[]
   thread_id?: string
 }
-
 
 
 /** 步骤名称列表（用于验证） */
@@ -42,9 +42,10 @@ interface UseChatOptions {
   onStart?: () => void;
   initialMessages?: ChatMessage[];
   onSessionCreated?: (data: SessionEventData) => void;
+  onExecuteSuccess?: (outputFile: string) => void;
 }
 
-export const useChat = ({ onStart, initialMessages, onSessionCreated }: UseChatOptions) => {
+export const useChat = ({ onStart, initialMessages, onSessionCreated, onExecuteSuccess }: UseChatOptions) => {
   const [messages, updateMessages] = useImmer<ChatMessage[]>(initialMessages || []);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -105,6 +106,7 @@ export const useChat = ({ onStart, initialMessages, onSessionCreated }: UseChatO
       events: {
         onStart,
         onMessage: (event, data) => {
+          console.log(event, data)
           // 处理 session 事件 - 会话元数据
           if (event === "session") {
             const sessionData = data as SessionEventData;
@@ -139,6 +141,11 @@ export const useChat = ({ onStart, initialMessages, onSessionCreated }: UseChatO
               }
             });
             return;
+          }
+
+          if (step === 'execute' && status === 'done' && output) {
+            const execOutput = output as ExecuteStepOutput;
+            onExecuteSuccess?.(execOutput.output_file);
           }
 
           // 验证步骤名称

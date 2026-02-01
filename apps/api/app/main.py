@@ -5,11 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 from app.api.main import api_router
-from app.core.config import init_dirs, STORAGE_DIR
 from app.schemas.response import ApiResponse
 
 load_dotenv()
@@ -27,7 +25,6 @@ OPENAPI_DESCRIPTION = """
 - 📥 **结果导出**: 处理结果可导出为 Excel 文件
 
 """
-init_dirs()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,9 +81,4 @@ async def root():
 
 
 app.include_router(api_router)
-
-# 挂载静态文件目录
-# 注意：静态文件挂载应该在路由注册之后，或者使用特定的路径前缀
-# 这样可以避免与 API 路由冲突
-app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
 

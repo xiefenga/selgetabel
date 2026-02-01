@@ -17,12 +17,12 @@ class Settings(BaseSettings):
     )
 
     # 应用配置
+    ENV: str = "production"  # development | production
     DEBUG: bool = False
 
-    # 存储目录
-    STORAGE_DIR: Path = Path("storage")
-    UPLOAD_DIR: Path = Path("storage/uploads")
-    OUTPUT_DIR: Path = Path("storage/outputs")
+    # 项目根目录（monorepo 根目录，用于访问 fixtures/ 等共享资源）
+    # 默认假设当前工作目录是 apps/api，向上两级是项目根目录
+    PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent.parent
 
     # 数据库配置（应用与 Alembic 均使用 asyncpg，此处统一为 postgresql+asyncpg）
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/llm_excel"
@@ -62,14 +62,3 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# 模块级别的导出，方便直接导入使用
-STORAGE_DIR = settings.STORAGE_DIR
-UPLOAD_DIR = settings.UPLOAD_DIR
-OUTPUT_DIR = settings.OUTPUT_DIR
-
-
-def init_dirs():
-    """初始化目录"""
-    settings.STORAGE_DIR.mkdir(exist_ok=True)
-    settings.UPLOAD_DIR.mkdir(exist_ok=True)
-    settings.OUTPUT_DIR.mkdir(exist_ok=True)

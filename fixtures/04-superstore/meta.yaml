@@ -1,0 +1,44 @@
+id: "04-superstore"
+name: "超市销售数据"
+description: "超市销售数据，用于测试分组汇总、百分比计算、日期处理等场景"
+
+datasets:
+  - file: "superstore_data.xlsx"
+    description: "超市销售订单表"
+
+cases:
+  - id: "category-summary"
+    name: "分类汇总"
+    prompt: |
+      我想看不同区域的盈利情况。请按 Region 列进行分组，计算 Sales 的总和以及 Profit 的总和。结果生成一个新表，表头包含 Region, Total_Sales, Total_Profit。
+    tags: ["分组", "汇总", "聚合"]
+
+  - id: "profit-margin"
+    name: "利润率计算与格式化"
+    prompt: |
+      计算每一笔订单的利润率（Profit 除以 Sales）。在 Profit 列之后插入新列 Profit_Margin，并将该列的数据格式化为百分比（保留两位小数）。
+    tags: ["计算", "百分比", "格式化"]
+
+  - id: "year-extract"
+    name: "年份提取"
+    prompt: |
+      从 Order Date 列中提取出年份（例如 2016）。结果写入原表名为 Order_Year 的新列。
+    tags: ["日期处理", "提取"]
+
+  - id: "loss-alert"
+    name: "严重亏损预警"
+    prompt: |
+      找出亏损严重的订单。筛选出 Profit 小于 0 且 Discount（折扣）大于 0.5 的订单。将 Order ID, Product Name, Profit 三列写入一个名为'亏损警报'的新 Sheet。
+    tags: ["筛选", "新Sheet"]
+
+  - id: "customer-ranking"
+    name: "客户购买力排名"
+    prompt: |
+      按 Customer Name 分组，计算每个客户的销售总额（Sales Sum），并按总额降序排列，取前 20 位大客户。结果生成一个新表。
+    tags: ["分组", "排名", "TOP N"]
+
+  - id: "shipping-days"
+    name: "物流时效计算"
+    prompt: |
+      计算发货所需天数。用 Ship Date 减去 Order Date。结果写入原表新列 Days_to_Ship。
+    tags: ["日期计算", "新增列"]

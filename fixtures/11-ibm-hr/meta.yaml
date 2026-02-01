@@ -1,0 +1,44 @@
+id: "11-ibm-hr"
+name: "IBM 员工流失与绩效数据"
+description: "IBM 员工人力资源数据，用于测试字典映射、计算、筛选等场景"
+
+datasets:
+  - file: "IBM-HR.xlsx"
+    description: "员工信息与绩效表"
+
+cases:
+  - id: "education-mapping"
+    name: "数据字典映射"
+    prompt: |
+      为了提高可读性，请处理 Education 列：将数字 '1' 替换为 'Below College'，'2' 替换为 'College'，'3' 替换为 'Bachelor'，'4' 替换为 'Master'，'5' 替换为 'Doctor'。直接修改原表。
+    tags: ["字典映射", "替换"]
+
+  - id: "satisfaction-sum"
+    name: "综合满意度计算"
+    prompt: |
+      创建一个新的评价指标。请将 EnvironmentSatisfaction（环境满意度）、JobSatisfaction（工作满意度）和 RelationshipSatisfaction（关系满意度）三列的数值相加。结果写入原表新列 Overall_Satisfaction。
+    tags: ["计算", "多列求和"]
+
+  - id: "high-risk-filter"
+    name: "高危流失人群筛选"
+    prompt: |
+      找出潜在的离职高危人群。筛选出 OverTime（加班）为 'Yes' 且 MonthlyIncome（月薪）低于 5000，同时 YearsAtCompany（司龄）小于 2 年的员工。将结果写入一个名为'High_Risk_Employees'的新 Sheet。
+    tags: ["多条件筛选", "新Sheet"]
+
+  - id: "age-binning"
+    name: "年龄段分箱"
+    prompt: |
+      对员工年龄进行分组。如果 Age 小于 30 岁标记为 'Youth'，30 到 50 岁标记为 'Middle-aged'，50 岁以上标记为 'Senior'。结果写入原表新列 Age_Group。
+    tags: ["分箱", "条件判断"]
+
+  - id: "dept-salary"
+    name: "部门薪资分析"
+    prompt: |
+      分析各部门的薪资水平。请按 Department 列分组，计算 MonthlyIncome 的平均值、中位数以及 Attrition（离职）的总人数（计数）。结果生成一个新表。
+    tags: ["分组", "多指标聚合"]
+
+  - id: "text-clean"
+    name: "文本清洗与格式化"
+    prompt: |
+      检查 BusinessTravel 列，将所有的下划线 '_' 替换为空格 ' '（例如 'Travel_Rarely' 变为 'Travel Rarely'），并将文本转换为首字母大写格式。直接修改原表。
+    tags: ["文本清洗", "格式化"]

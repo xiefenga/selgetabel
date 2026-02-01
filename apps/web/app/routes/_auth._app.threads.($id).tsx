@@ -1,22 +1,26 @@
+import dayjs from "dayjs";
+import invariant from "tiny-invariant";
 import { useNavigate } from "react-router";
-import { useState, useRef, useEffect } from "react";
 import { Cloud, Info, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "~/components/ui/resizable";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "~/components/ui/alert-dialog";
 
 import ChatInput from "~/components/chat-input";
 import MessageList from "~/components/llm-chat/message-list";
 
 import { getThreadDetail, uploadFiles } from "~/lib/api";
 
-import { type FileItem } from "~/components/file-item-badge";
-import type { Route } from "./+types/_auth._app.threads.($id)";
-import { useChat, type ChatMessage } from "~/hooks/use-chat";
-import invariant from "tiny-invariant";
+import { useChat } from "~/hooks/use-chat";
 import { useAuthStore } from "~/stores/auth";
-import type { AssistantMessage, UserMessage, StepRecord, StepName, StepError } from "~/components/llm-chat/message-list/types";
-import dayjs from "dayjs";
+
+import type { ChatMessage } from "~/hooks/use-chat";
+import type { FileItem } from "~/components/file-item-badge";
+import type { Route } from "./+types/_auth._app.threads.($id)";
+import type { AssistantMessage, UserMessage, StepRecord, StepName, StepError, UserMessageAttachment } from "~/components/llm-chat/message-list/types";
+import RightPreview, { type PanelTab } from "~/components/right-preview";
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -25,22 +29,27 @@ export function meta({ }: Route.MetaArgs) {
   ];
 }
 
+
 const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
 
   const initThreadId = useRef<string>('')
 
   const navigate = useNavigate();
+
   const [query, setQuery] = useState('');
   const [fileItems, setFileItems] = useState<FileItem[]>([]);
-  const [outputFile, setOutputFile] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 获取所有成功上传的文件 IDs
-  const fileIds = fileItems.filter(item => item.status === "success" && item.fileId).map(item => item.fileId!);
+  const [inputFiles, setInputFiles] = useState<UserMessageAttachment[]>([])
+  const [outputFile, setOutputFile] = useState<string | null>(null);
+
+  // 新会话确认弹窗状态
+  const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
 
   const queryClient = useQueryClient()
 
-  const { messages, resetChat, sendMessage, setMessages, clearMessages } = useChat({
+  const { messages, sendMessage, setMessages, clearMessages, isProcessing } = useChat({
     onStart: () => {
       setQuery("");
       setFileItems([])
@@ -49,6 +58,10 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
       initThreadId.current = thread_id
       navigate(`/threads/${thread_id}`);
       queryClient.invalidateQueries({ queryKey: ['threads'] })
+    },
+    onExecuteSuccess: (outputFile) => {
+      setOutputFile(outputFile);
+      setPanelTab("output");
     },
   });
 
@@ -71,8 +84,6 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
           files: turn.files,
           created: dayjs(turn.created_at).unix()
         } satisfies UserMessage);
-
-
 
         // 添加助手消息
         // 从 turn.steps 回填步骤数据（steps 已经是符合规范的数组格式）
@@ -125,6 +136,8 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
         messages.push(assistantMessage);
       });
 
+      setInputFiles(thread.turns.reduce((memo, item) => [...memo, ...(item.files ?? [])], [] as UserMessageAttachment[]))
+
       setMessages(messages);
     }
   })
@@ -172,6 +185,7 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
           };
           return updated;
         });
+        setInputFiles(prev => [...prev, ...result.map(item => ({ id: item.id, path: item.path, filename: item.filename }))])
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "上传失败";
@@ -276,6 +290,48 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
     fileInputRef.current?.click();
   };
 
+  // 执行发送消息（开启新会话）
+  const doSendMessage = useCallback(() => {
+    // 导航到新会话页面（无 threadId），然后发送消息
+    navigate('/threads');
+    sendMessage({
+      text: query,
+      files: fileItems.map(item => ({
+        id: item.fileId!,
+        filename: item.file.name,
+        path: item.path!
+      }))
+    });
+  }, [navigate, sendMessage, query, fileItems]);
+
+  // 处理提交按钮点击
+  const handleSubmit = useCallback(() => {
+    if (isProcessing) return;
+
+    // 如果当前已经在某个会话中，弹窗确认是否开启新会话
+    if (threadId) {
+      setShowNewSessionDialog(true);
+    } else {
+      // 新会话页面，直接发送
+      sendMessage({
+        thread_id: threadId,
+        text: query,
+        files: fileItems.map(item => ({
+          id: item.fileId!,
+          filename: item.file.name,
+          path: item.path!
+        }))
+      });
+    }
+  }, [isProcessing, threadId, sendMessage, query, fileItems]);
+
+  // 确认开启新会话
+  const handleConfirmNewSession = useCallback(() => {
+    setShowNewSessionDialog(false);
+    doSendMessage();
+  }, [doSendMessage]);
+
+  const [panelTab, setPanelTab] = useState<PanelTab>('input')
 
   return (
     <div className="h-full flex flex-col">
@@ -361,13 +417,24 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
                 className="p-6 pt-2 bg-white/80 backdrop-blur-sm"
                 text={query}
                 onTextChange={setQuery}
-                onSubmit={() => sendMessage({ text: query, files: fileItems.map(item => ({ id: item.fileId!, filename: item.file.name, path: item.path! })) })}
+                onSubmit={handleSubmit}
                 onPasteFiles={onPasteFiles}
-                placeholder={fileIds.length > 0 ? "请输入对于上传文件的任何分析处理需求..." : "请先上传 Excel 文件..."}
+                placeholder={"上传 Excel 文件，输入您的需求"}
+                loading={isProcessing}
               />
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
+          {inputFiles.length > 0 && (
+            <ResizablePanel defaultSize={60}>
+              <RightPreview
+                panelTab={panelTab}
+                onPanelTabChange={setPanelTab}
+                inputFiles={inputFiles}
+                outputFile={outputFile ?? undefined}
+              />
+            </ResizablePanel>
+          )}
         </ResizablePanelGroup>
       </main>
 
@@ -379,6 +446,24 @@ const ThreadChatPage = ({ params: { id: threadId } }: Route.ComponentProps) => {
         onChange={onFileChange}
         accept=".xlsx,.xls,.csv"
       />
+
+      {/* 新会话确认弹窗 */}
+      <AlertDialog open={showNewSessionDialog} onOpenChange={setShowNewSessionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>开启新会话</AlertDialogTitle>
+            <AlertDialogDescription>
+              当前暂不支持多轮对话，发送新消息将开启一个新的会话。确定要继续吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmNewSession}>
+              确认开启新会话
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

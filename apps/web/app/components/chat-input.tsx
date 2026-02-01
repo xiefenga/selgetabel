@@ -26,14 +26,21 @@ interface ChatInputProps {
   className?: string
   fileItems?: FileItem[]
   onRemoveFile: (fileId: string) => void
+  /** 是否处于加载/处理状态 */
+  loading?: boolean
 }
 
-const ChatInput = ({ text, onTextChange, onSubmit, onPasteFiles, placeholder, className, fileItems, onRemoveFile }: ChatInputProps) => {
+const ChatInput = ({ text, onTextChange, onSubmit, onPasteFiles, placeholder, className, fileItems, onRemoveFile, loading = false }: ChatInputProps) => {
+
+  // 是否禁用提交（loading 或正在处理粘贴文件）
+  const isSubmitDisabled = !text.trim() || loading;
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSubmit();
+      if (!isSubmitDisabled) {
+        onSubmit();
+      }
     }
   };
 
@@ -112,7 +119,7 @@ const ChatInput = ({ text, onTextChange, onSubmit, onPasteFiles, placeholder, cl
             onPaste={onPaste}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
-            disabled={pasteFileProcessing}
+            disabled={pasteFileProcessing || loading}
             className="flex-1 border-0 focus:ring-0 focus-visible:ring-0 resize-none min-h-[80px] text-gray-900 placeholder:text-gray-400 border-none shadow-none max-h-[100px] overflow-y-auto"
           />
 
@@ -120,10 +127,10 @@ const ChatInput = ({ text, onTextChange, onSubmit, onPasteFiles, placeholder, cl
             <Button
               onClick={() => onSubmit()}
               size={"icon"}
-              disabled={!text.trim() || pasteFileProcessing}
+              disabled={isSubmitDisabled || pasteFileProcessing}
               className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 rounded-full p-3 shrink-0 cursor-pointer"
             >
-              {pasteFileProcessing ? (
+              {loading || pasteFileProcessing ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <Send className="w-5 h-5" />

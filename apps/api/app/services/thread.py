@@ -1,7 +1,7 @@
 """线程相关服务"""
 
 from typing import Optional
-from app.core.llm_client import LLMClient
+from app.engine.llm_client import LLMClient
 
 
 def generate_thread_title(query: str, llm_client: LLMClient) -> Optional[str]:

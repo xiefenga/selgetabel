@@ -1,0 +1,44 @@
+id: "09-kickstarter"
+name: "Kickstarter 众筹项目数据"
+description: "Kickstarter 众筹项目数据，用于测试数据清洗、计算、日期处理等场景"
+
+datasets:
+  - file: "ks-projects.xlsx"
+    description: "众筹项目数据表"
+
+cases:
+  - id: "status-clean"
+    name: "状态清洗与二元化"
+    prompt: |
+      表格中的 state 列包含 'failed', 'canceled', 'successful', 'live' 等多种状态。请只保留 'successful' 和 'failed' 的行。然后将 'successful' 替换为 1，'failed' 替换为 0。结果写入原表。
+    tags: ["数据清洗", "筛选", "替换"]
+
+  - id: "completion-rate"
+    name: "资金达成率"
+    prompt: |
+      计算每个项目的众筹达成率。用 usd_pledged（实际筹集金额）除以 goal（目标金额）。结果写入原表新列 Completion_Rate，并格式化为百分比。
+    tags: ["计算", "百分比"]
+
+  - id: "duration-calc"
+    name: "众筹周期计算"
+    prompt: |
+      计算项目从发布到截止的天数。用 deadline 减去 launched 时间。结果写入原表新列 Duration_Days（保留整数天）。
+    tags: ["日期计算", "新增列"]
+
+  - id: "category-success"
+    name: "类别成功率透视"
+    prompt: |
+      分析哪个领域的项目最容易成功。按 main_category 分组，计算 state（场景A处理后的0/1值）的平均值（即成功率）和 backers（支持者人数）的总和。结果生成一个新表，按成功率降序排列。
+    tags: ["分组", "平均值", "依赖前序"]
+
+  - id: "high-goal-fail"
+    name: "高目标失败项目分析"
+    prompt: |
+      找出'眼高手低'的项目。筛选出 state 为 0（失败）且 goal（目标金额）大于 100,000 美元的项目。将 Name, Category, Goal 三列写入一个名为'野心过大'的新 Sheet。
+    tags: ["筛选", "新Sheet"]
+
+  - id: "title-length"
+    name: "标题吸引力分析"
+    prompt: |
+      计算 name 列的项目名称字符长度，写入新列 Name_Len。然后将长度分为 'Short'(<20), 'Medium'(20-50), 'Long'(>50) 三组，统计每组的成功项目数量。结果生成一个新表。
+    tags: ["文本处理", "分箱", "统计"]

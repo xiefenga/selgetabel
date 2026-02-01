@@ -1,0 +1,52 @@
+id: "12-brazil-ecommerce"
+name: "巴西电商订单与客户"
+description: "巴西电商多表数据，用于测试跨表关联、VLOOKUP、分组统计等场景"
+
+datasets:
+  - file: "olist_customers.xlsx"
+    description: "客户信息表"
+  - file: "olist_orders.xlsx"
+    description: "订单信息表"
+
+schema:
+  - sheet: "Sheet1 (olist_orders)"
+    columns: ["order_id", "customer_id", "order_status"]
+  - sheet: "Sheet2 (olist_customers)"
+    columns: ["customer_id", "customer_city", "customer_state"]
+
+cases:
+  - id: "left-join"
+    name: "左连接"
+    prompt: |
+      以 olist_orders 为主表，通过 customer_id 关联 olist_customers。 将 customer_city 和 customer_state 添加到 Sheet1。结果写入 olist_orders 原表新列。
+    tags: ["跨表关联", "VLOOKUP"]
+
+  - id: "filter-join"
+    name: "筛选关联导出"
+    prompt: |
+      筛选 olist_orders 中 order_status 为 'delivered' 的订单，关联 olist_customers 获取城市。将结果写入一个名为'已发货详情'的新 Sheet。
+    tags: ["筛选", "关联", "新Sheet"]
+
+  - id: "city-stats"
+    name: "城市订单统计"
+    prompt: |
+      关联后，按 customer_city 分组，统计每个城市的订单数量，取前 10 名。结果生成一个新表。
+    tags: ["分组", "计数", "TOP N"]
+
+  - id: "state-status"
+    name: "州维度状态分析"
+    prompt: |
+      关联后，按 customer_state 和 order_status 分组，统计订单数。结果生成一个新表。
+    tags: ["多维分组", "计数"]
+
+  - id: "state-filter"
+    name: "特定州筛选"
+    prompt: |
+      筛选出 customer_state 为 'SP' (圣保罗) 的所有订单 ID。结果写入一个新 Sheet。
+    tags: ["筛选", "新Sheet"]
+
+  - id: "existence-check"
+    name: "跨表存在性检查"
+    prompt: |
+      检查 olist_orders 中的 customer_id 是否都在 olist_customers 中存在。新建一列 Is_Valid_Customer，存在填 True，不存在填 False。
+    tags: ["跨表验证", "MATCH"]

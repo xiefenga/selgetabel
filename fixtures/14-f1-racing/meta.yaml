@@ -1,0 +1,52 @@
+id: "14-f1-racing"
+name: "F1 一级方程式赛车数据"
+description: "F1 赛车多表数据，用于测试跨表关联、筛选、分组统计等场景"
+
+datasets:
+  - file: "drivers.xlsx"
+    description: "车手信息表"
+  - file: "results.xlsx"
+    description: "比赛结果表"
+
+schema:
+  - sheet: "Sheet1 (results)"
+    columns: ["resultId", "driverId", "positionOrder", "points"]
+  - sheet: "Sheet2 (drivers)"
+    columns: ["driverId", "driverRef", "nationality"]
+
+cases:
+  - id: "basic-join"
+    name: "基础信息关联"
+    prompt: |
+      Sheet1 是比赛结果。请通过 driverId 从 Sheet2 中匹配对应的 driverRef 和 nationality。结果写入 Sheet1 新列。
+    tags: ["跨表关联", "VLOOKUP"]
+
+  - id: "champion-query"
+    name: "冠军查询"
+    prompt: |
+      在 Sheet1 中筛选出 positionOrder 为 1（冠军）的记录，关联 Sheet2 获取车手姓名。结果写入一个新 Sheet。
+    tags: ["筛选", "关联", "新Sheet"]
+
+  - id: "nationality-wins"
+    name: "按国籍统计胜场"
+    prompt: |
+      先关联表。筛选出冠军（positionOrder=1），按 nationality 分组统计夺冠次数。结果生成一个新表。
+    tags: ["分组", "计数", "筛选"]
+
+  - id: "driver-record"
+    name: "特定车手战绩"
+    prompt: |
+      找出 Sheet2 中 driverRef 为 'hamilton' 的 ID，去 Sheet1 筛选该 ID 的所有记录。结果写入新 Sheet。
+    tags: ["查找", "筛选"]
+
+  - id: "total-points"
+    name: "总积分排名"
+    prompt: |
+      关联后，按 driverRef 分组，计算 points 的总和，降序排列。结果生成一个新表。
+    tags: ["分组", "求和", "排序"]
+
+  - id: "id-consistency"
+    name: "车手ID一致性验证"
+    prompt: |
+      统计 Sheet1 中有多少个不同的 driverId，并统计 Sheet2 中有多少个 driverId，计算两者的差值。结果输出到新 Sheet。
+    tags: ["统计", "去重", "对比"]

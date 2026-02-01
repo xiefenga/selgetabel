@@ -1,0 +1,44 @@
+id: "10-loan"
+name: "个人贷款资格数据"
+description: "个人贷款申请数据，用于测试计算、缺失值处理、单位转换等场景"
+
+datasets:
+  - file: "loan.xlsx"
+    description: "贷款申请信息表"
+
+cases:
+  - id: "total-income"
+    name: "总收入计算"
+    prompt: |
+      计算申请人的家庭总收入。请将 ApplicantIncome（申请人收入）与 CoapplicantIncome（共同申请人收入）相加。结果写入原表新列 Total_Income。
+    tags: ["计算", "新增列"]
+
+  - id: "mean-fill"
+    name: "缺失值均值填充"
+    prompt: |
+      LoanAmount（贷款金额）列存在一些空值。请计算该列现有数据的平均值，并用这个平均值填充所有的空单元格。直接修改原表。
+    tags: ["缺失值", "均值填充"]
+
+  - id: "debt-ratio"
+    name: "偿债能力评估"
+    prompt: |
+      计算'贷款收入比'。用 LoanAmount 除以 Total_Income（如果场景A已计算，否则使用两列之和）。结果写入原表新列 Loan_Income_Ratio，保留 4 位小数。
+    tags: ["计算", "比率", "依赖前序"]
+
+  - id: "term-convert"
+    name: "贷款期限转换"
+    prompt: |
+      Loan_Amount_Term 列的单位是'月'（例如 360）。请将其转换为'年'（除以 12）。结果写入原表新列 Term_Years。
+    tags: ["单位转换", "计算"]
+
+  - id: "approval-pivot"
+    name: "审批情况透视"
+    prompt: |
+      分析不同学历的贷款通过率。按 Education 分组，统计 Loan_Status 为 'Y'（通过）和 'N'（拒绝）的数量。结果生成一个新表。
+    tags: ["分组", "计数", "透视"]
+
+  - id: "status-label"
+    name: "状态标签标准化"
+    prompt: |
+      为了报表易读，请将 Loan_Status 列中的代码进行替换：把所有的 'Y' 替换为 'Approved'，把所有的 'N' 替换为 'Rejected'。直接修改原表。
+    tags: ["字典映射", "替换"]
