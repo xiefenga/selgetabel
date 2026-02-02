@@ -17,7 +17,7 @@ export interface UserMessage {
 // ========== Step 类型定义（对齐 SSE_SPEC 和 STEPS_STORAGE_SPEC）==========
 
 /** 步骤名称 */
-export type StepName = "load" | "analyze" | "generate" | "execute";
+export type StepName = "load" | "generate" | "validate" | "execute" | "export";
 
 /** 步骤状态 */
 export type StepStatus = "running" | "streaming" | "done" | "error";
@@ -30,15 +30,30 @@ export interface StepError {
 
 // ========== 各步骤的 Output 类型 ==========
 
-/** load 步骤输出 */
-export interface LoadStepOutput {
-  /** 表格 schema：{ 表名: { 列字母: 列名 } } */
-  schemas: Record<string, Record<string, string>>;
+/** 文件列信息 */
+export interface FileColumnInfo {
+  name: string;
+  letter: string;
+  type: "text" | "number" | "date" | "boolean";
 }
 
-/** analyze 步骤输出 */
-export interface AnalyzeStepOutput {
-  content: string;
+/** 文件 Sheet 信息 */
+export interface FileSheetInfo {
+  name: string;
+  row_count: number;
+  columns: FileColumnInfo[];
+}
+
+/** 文件信息 */
+export interface FileInfo {
+  file_id: string;
+  filename: string;
+  sheets: FileSheetInfo[];
+}
+
+/** load 步骤输出 */
+export interface LoadStepOutput {
+  files: FileInfo[];
 }
 
 /** generate 步骤输出 */
@@ -46,22 +61,41 @@ export interface GenerateStepOutput {
   operations: unknown[];
 }
 
+/** validate 步骤输出 */
+export interface ValidateStepOutput {
+  valid: boolean;
+}
+
 /** execute 步骤输出 */
 export interface ExecuteStepOutput {
   strategy?: string;        // 思路解读
   manual_steps?: string;    // 快捷复现
-  output_file: string;
   variables?: Record<string, unknown>;
   new_columns?: Record<string, unknown>;
+  updated_columns?: Record<string, unknown>;
+  new_sheets?: Record<string, unknown>;
   errors?: unknown[];
+}
+
+/** 输出文件信息 */
+export interface OutputFileInfo {
+  file_id: string;
+  filename: string;
+  url: string;
+}
+
+/** export 步骤输出 */
+export interface ExportStepOutput {
+  output_files: OutputFileInfo[];
 }
 
 /** 步骤 Output 类型映射 */
 export type StepOutputMap = {
   load: LoadStepOutput;
-  analyze: AnalyzeStepOutput;
   generate: GenerateStepOutput;
+  validate: ValidateStepOutput;
   execute: ExecuteStepOutput;
+  export: ExportStepOutput;
 };
 
 // ========== Step 记录类型（存储格式）==========
@@ -154,7 +188,7 @@ export type Message = UserMessage | AssistantMessage;
 // ========== 工具函数类型 ==========
 
 /** 有效的步骤名称列表 */
-const VALID_STEP_NAMES: StepName[] = ["load", "analyze", "generate", "execute"];
+const VALID_STEP_NAMES: StepName[] = ["load", "generate", "validate", "execute", "export"];
 
 /** 获取每个步骤的最终状态 */
 export function getLatestSteps(steps: StepRecord[]): Partial<Record<StepName, StepRecord>> {

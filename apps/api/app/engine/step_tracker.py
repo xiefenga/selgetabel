@@ -61,7 +61,7 @@ class StepTracker:
         记录步骤开始
 
         Args:
-            step: 步骤名称 (load, analyze, generate, execute)
+            step: 步骤名称 (load, generate, validate, execute, export)
 
         Returns:
             新创建的步骤记录

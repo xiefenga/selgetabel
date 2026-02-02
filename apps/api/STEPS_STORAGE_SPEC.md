@@ -20,28 +20,28 @@
   {
     "step": "load",
     "status": "done",
-    "output": { "schemas": [...] },
+    "output": { "files": [...] },
     "started_at": "2025-01-28T10:00:00Z",
     "completed_at": "2025-01-28T10:00:01Z"
   },
   {
-    "step": "analyze",
+    "step": "generate",
     "status": "error",
     "error": { "code": "LLM_TIMEOUT", "message": "请求超时" },
     "started_at": "2025-01-28T10:00:01Z",
     "completed_at": "2025-01-28T10:00:31Z"
   },
   {
-    "step": "analyze",
+    "step": "generate",
     "status": "done",
-    "output": { "content": "分析结果..." },
+    "output": { "operations": [...] },
     "started_at": "2025-01-28T10:00:32Z",
     "completed_at": "2025-01-28T10:00:40Z"
   },
   {
-    "step": "generate",
+    "step": "validate",
     "status": "done",
-    "output": { "operations": [...] },
+    "output": { "valid": true },
     "started_at": "...",
     "completed_at": "..."
   },
@@ -49,11 +49,18 @@
     "step": "execute",
     "status": "done",
     "output": {
-      "formulas": [...],
-      "output_file": "result_xxx.xlsx",
+      "strategy": "...",
+      "manual_steps": "...",
       "variables": {...},
       "new_columns": {...}
     },
+    "started_at": "...",
+    "completed_at": "..."
+  },
+  {
+    "step": "export",
+    "status": "done",
+    "output": { "output_files": [...] },
     "started_at": "...",
     "completed_at": "..."
   }
@@ -62,23 +69,24 @@
 
 ### 2.2 字段说明
 
-| 字段           | 类型   | 必填 | 说明                                       |
-| -------------- | ------ | ---- | ------------------------------------------ |
-| `step`         | string | 是   | 步骤名称：load, analyze, generate, execute |
-| `status`       | string | 是   | 状态：running, done, error                 |
-| `output`       | object | 否   | 步骤输出（仅 status=done 时）              |
-| `error`        | object | 否   | 错误信息（仅 status=error 时）             |
-| `started_at`   | string | 是   | 开始时间（ISO 8601）                       |
-| `completed_at` | string | 否   | 完成时间（ISO 8601）                       |
+| 字段           | 类型   | 必填 | 说明                                                |
+| -------------- | ------ | ---- | --------------------------------------------------- |
+| `step`         | string | 是   | 步骤名称：load, generate, validate, execute, export |
+| `status`       | string | 是   | 状态：running, done, error                          |
+| `output`       | object | 否   | 步骤输出（仅 status=done 时）                       |
+| `error`        | object | 否   | 错误信息（仅 status=error 时）                      |
+| `started_at`   | string | 是   | 开始时间（ISO 8601）                                |
+| `completed_at` | string | 否   | 完成时间（ISO 8601）                                |
 
 ### 2.3 各步骤 output 结构
 
-| step       | output 内容                                                                                              |
-| ---------- | -------------------------------------------------------------------------------------------------------- |
-| `load`     | `{ "schemas": [...] }`                                                                                   |
-| `analyze`  | `{ "content": "分析结果文本" }`                                                                          |
-| `generate` | `{ "operations": [...] }`                                                                                |
-| `execute`  | `{ "formulas": [...], "output_file": "...", "variables": {...}, "new_columns": {...}, "errors": [...] }` |
+| step       | output 内容                                                                         |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `load`     | `{ "files": [...] }`                                                                |
+| `generate` | `{ "operations": [...] }`                                                           |
+| `validate` | `{ "valid": true }`                                                                 |
+| `execute`  | `{ "strategy": "...", "manual_steps": "...", "variables": {...}, "errors": [...] }` |
+| `export`   | `{ "output_files": [...] }`                                                         |
 
 ### 2.4 error 结构
 
@@ -106,8 +114,8 @@ running → error   (失败)
 
 ```json
 [
-  { "step": "analyze", "status": "error", ... },
-  { "step": "analyze", "status": "done", ... }
+  { "step": "generate", "status": "error", ... },
+  { "step": "generate", "status": "done", ... }
 ]
 ```
 
@@ -134,24 +142,24 @@ function getLatestSteps(steps: StepRecord[]): Record<string, StepRecord> {
       acc[step.step] = step; // 后来的覆盖先前的
       return acc;
     },
-    {} as Record<string, StepRecord>,
+    {} as Record<string, StepRecord>
   );
 }
 
 // 使用
 const latest = getLatestSteps(turn.steps);
 if (latest.load?.status === "done") {
-  setSchemas(latest.load.output.schemas);
+  setFiles(latest.load.output.files);
 }
-if (latest.analyze?.status === "done") {
-  setAnalysis(latest.analyze.output.content);
+if (latest.generate?.status === "done") {
+  setOperations(latest.generate.output.operations);
 }
 ```
 
 ### 5.2 展示重试历史（可选）
 
 ```typescript
-const analyzeAttempts = steps.filter((s) => s.step === "analyze");
+const generateAttempts = steps.filter((s) => s.step === "generate");
 // 可展示 "尝试了 N 次"
 ```
 
@@ -179,7 +187,6 @@ class ThreadTurn(Base):
 ### 6.2 删除的内容
 
 - **TurnResult 表**：合并到 `steps[execute].output`
-- **ThreadTurn.analysis**：移入 `steps[analyze].output.content`
 - **ThreadTurn.operations_json**：移入 `steps[generate].output.operations`
 - **ThreadTurn.error_message**：移入 `steps[].error.message`
 

@@ -11,9 +11,10 @@ import type {
   DoneStepRecord,
   StreamingStepRecord,
   LoadStepOutput,
-  AnalyzeStepOutput,
   GenerateStepOutput,
-  ExecuteStepOutput
+  ValidateStepOutput,
+  ExecuteStepOutput,
+  ExportStepOutput
 } from "../types";
 
 /** 步骤配置 */
@@ -22,17 +23,21 @@ const STEP_CONFIG: Record<StepName, { label: string; icon: React.ReactNode }> = 
     label: "加载文件",
     icon: <FileSpreadsheet className="w-4 h-4" />,
   },
-  analyze: {
-    label: "分析需求",
-    icon: <Brain className="w-4 h-4" />,
-  },
   generate: {
     label: "生成操作",
     icon: <Code2 className="w-4 h-4" />,
   },
+  validate: {
+    label: "验证操作",
+    icon: <Brain className="w-4 h-4" />,
+  },
   execute: {
     label: "执行处理",
     icon: <Play className="w-4 h-4" />,
+  },
+  export: {
+    label: "导出文件",
+    icon: <FileSpreadsheet className="w-4 h-4" />,
   },
 };
 
@@ -72,22 +77,6 @@ const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => {
   const renderStreamContent = (streamContent: string) => {
     if (!streamContent) return null;
 
-    if (stepName === "load") {
-      return (
-        <div className="text-sm text-gray-600">
-          {streamContent}
-          <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
-        </div>
-      );
-    }
-    if (stepName === "analyze") {
-      return (
-        <div className="relative">
-          <Streamdown>{streamContent}</Streamdown>
-          <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse align-middle" />
-        </div>
-      );
-    }
     if (stepName === "generate") {
       return (
         <div className="space-y-2">
@@ -99,16 +88,10 @@ const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => {
         </div>
       );
     }
-    if (stepName === "execute") {
-      return (
-        <div className="text-sm text-gray-600">
-          {streamContent}
-          <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
-        </div>
-      );
-    }
+
+    // 默认样式：适用于 load, validate, execute, export 等步骤
     return (
-      <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
+      <div className="text-sm text-gray-600">
         {streamContent}
         <span className="inline-block w-2 h-4 bg-emerald-500 ml-0.5 animate-pulse" />
       </div>
@@ -119,34 +102,30 @@ const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => {
   const renderDoneContent = (doneRecord: DoneStepRecord) => {
     if (stepName === "load") {
       const output = doneRecord.output as LoadStepOutput;
-      const schemas = output?.schemas || {};
-      const tableNames = Object.keys(schemas);
+      const files = output?.files || [];
       return (
         <div className="space-y-2">
           <p className="text-sm text-gray-600">
-            已加载 {tableNames.length} 个表格
+            已加载 {files.length} 个文件
           </p>
-          {tableNames.map((tableName) => {
-            const columns = schemas[tableName] || {};
-            const columnNames = Object.values(columns);
-            return (
-              <div key={tableName} className="bg-gray-50 rounded-lg p-3">
-                <p className="font-medium text-sm text-gray-800 mb-1">
-                  {tableName}
-                </p>
-                <p className="text-xs text-gray-500 line-clamp-2">
-                  列：{columnNames.join("、")}
-                </p>
-              </div>
-            );
-          })}
+          {files.map((file) => (
+            <div key={file.file_id} className="bg-gray-50 rounded-lg p-3">
+              <p className="font-medium text-sm text-gray-800 mb-1">
+                {file.filename}
+              </p>
+              {file.sheets.map((sheet) => (
+                <div key={sheet.name} className="text-xs text-gray-500 mt-1">
+                  <span className="font-medium">{sheet.name}</span>
+                  <span className="mx-1">·</span>
+                  <span>{sheet.row_count} 行</span>
+                  <span className="mx-1">·</span>
+                  <span>列：{sheet.columns.map(c => c.name).join("、")}</span>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       );
-    }
-
-    if (stepName === "analyze") {
-      const output = doneRecord.output as AnalyzeStepOutput;
-      return <Streamdown>{output?.content}</Streamdown>;
     }
 
     if (stepName === "generate") {
@@ -164,17 +143,20 @@ const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => {
       );
     }
 
+    if (stepName === "validate") {
+      const output = doneRecord.output as ValidateStepOutput;
+      return (
+        <div className="text-sm text-gray-600">
+          {output?.valid ? "验证通过" : "验证失败"}
+        </div>
+      );
+    }
+
     if (stepName === "execute") {
       const output = doneRecord.output as ExecuteStepOutput;
-      const { strategy, manual_steps, output_file } = output;
+      const { strategy, manual_steps } = output;
       return (
         <div className="space-y-4">
-          {/* 输出文件 */}
-          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2">
-            <FileSpreadsheet className="w-4 h-4" />
-            <span className="text-sm font-medium">{output_file}</span>
-          </div>
-
           {/* 思路解读 */}
           {strategy && (
             <div className="border border-blue-200 rounded-lg overflow-hidden">
@@ -198,6 +180,27 @@ const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => {
               </pre>
             </details>
           )}
+        </div>
+      );
+    }
+
+    if (stepName === "export") {
+      const output = doneRecord.output as ExportStepOutput;
+      const outputFiles = output?.output_files || [];
+      return (
+        <div className="space-y-2">
+          {outputFiles.map((file) => (
+            <a
+              key={file.file_id}
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2 hover:bg-emerald-100 transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span className="text-sm font-medium">{file.filename}</span>
+            </a>
+          ))}
         </div>
       );
     }
@@ -344,7 +347,7 @@ const AssistantMessage = ({ message }: Props) => {
         <StepItem
           key={`${record.step}-${index}`}
           record={record}
-          defaultExpanded={record.step === "analyze" || record.step === "execute"}
+          defaultExpanded={record.step === "execute" || record.step === "export"}
         />
       ))}
 

@@ -80,13 +80,14 @@ data: {
 
 #### 步骤定义
 
-| step       | 说明     | output 内容                                                     |
-| ---------- | -------- | --------------------------------------------------------------- |
-| `load`     | 加载文件 | `{ "files": [...] }`                                            |
-| `generate` | 生成操作 | `{ "operations": [...] }`                                       |
-| `execute`  | 执行操作 | `{ "strategy": "...", "manual_steps": "...", "errors": [...] }` |
-| `export`   | 导出结果 | `{ "output_files": [...] }`                                     |
-| `complete` | 流程完成 | `{ "success": true, "errors": null }`                           |
+| step       | 说明         | output 内容                                                     |
+| ---------- | ------------ | --------------------------------------------------------------- |
+| `load`     | 加载文件     | `{ "files": [...] }`                                            |
+| `generate` | 生成操作     | `{ "operations": [...] }`                                       |
+| `validate` | 验证操作     | `{ "valid": true }`                                             |
+| `execute`  | 执行操作     | `{ "strategy": "...", "manual_steps": "...", "errors": [...] }` |
+| `export`   | 导出结果     | `{ "output_files": [...] }`                                     |
+| `complete` | 流程完成标志 | `{ "success": true, "errors": null }`                           |
 
 #### 状态流转
 
@@ -115,6 +116,9 @@ data: { "step": "load", "stage_id": "a1b2c3...", "status": "done", "output": { "
 data: { "step": "generate", "stage_id": "d4e5f6...", "status": "running" }
 data: { "step": "generate", "stage_id": "d4e5f6...", "status": "streaming", "delta": "正在分析" }
 data: { "step": "generate", "stage_id": "d4e5f6...", "status": "done", "output": { "operations": [...] } }
+
+data: { "step": "validate", "stage_id": "e5f6g7...", "status": "running" }
+data: { "step": "validate", "stage_id": "e5f6g7...", "status": "done", "output": { "valid": true } }
 
 data: { "step": "execute", "stage_id": "g7h8i9...", "status": "running" }
 data: { "step": "execute", "stage_id": "g7h8i9...", "status": "done", "output": { "strategy": "...", "manual_steps": "...", "errors": null } }
@@ -260,6 +264,9 @@ data: { "step": "generate", "stage_id": "gen-001", "status": "running" }
 data: { "step": "generate", "stage_id": "gen-001", "status": "streaming", "delta": "正在分析..." }
 data: { "step": "generate", "stage_id": "gen-001", "status": "done", "output": { "operations": [...] } }
 
+data: { "step": "validate", "stage_id": "val-001", "status": "running" }
+data: { "step": "validate", "stage_id": "val-001", "status": "done", "output": { "valid": true } }
+
 data: { "step": "execute", "stage_id": "exec-001", "status": "running" }
 data: { "step": "execute", "stage_id": "exec-001", "status": "done", "output": { "strategy": "...", "manual_steps": "...", "errors": null } }
 
@@ -277,6 +284,9 @@ data: { "step": "load", "stage_id": "load-001", "status": "done", "output": { "f
 
 data: { "step": "generate", "stage_id": "gen-001", "status": "running" }
 data: { "step": "generate", "stage_id": "gen-001", "status": "done", "output": { "operations": [...] } }
+
+data: { "step": "validate", "stage_id": "val-001", "status": "running" }
+data: { "step": "validate", "stage_id": "val-001", "status": "done", "output": { "valid": true } }
 
 data: { "step": "execute", "stage_id": "exec-001", "status": "running" }
 data: { "step": "execute", "stage_id": "exec-001", "status": "done", "output": { "strategy": "...", "manual_steps": "...", "errors": null } }

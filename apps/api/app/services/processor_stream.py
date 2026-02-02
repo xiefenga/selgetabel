@@ -185,7 +185,7 @@ async def stream_excel_processing(
     """
     完整的 Excel 处理流式输出
 
-    统一处理流程：load:file → analyze → generate → execute → export:result → complete
+    统一处理流程：load → generate → validate → execute → export → complete
 
     Args:
         load_tables_fn: 加载数据的函数（由调用方实现）
@@ -249,7 +249,7 @@ async def stream_excel_processing(
         yield sse_step_error("load", str(e), load_stage_id)
         return
 
-    # === 2. analyze/generate/execute ===
+    # === 2. generate/validate/execute ===
     llm_client = get_llm_client()
     processor = ExcelProcessor(llm_client)
     config = ProcessConfig(stream_llm=stream_llm)
