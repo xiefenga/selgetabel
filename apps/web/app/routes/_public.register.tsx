@@ -9,12 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { register } from "~/api/auth";
 
 import type { FormEvent } from "react";
-import type { Route } from "./+types/_auth-pages.register";
+import type { Route } from "./+types/_public.register";
 
 export function meta({ }: Route.MetaArgs) {
   return [
-{ title: "注册 - Selgetabel" },
-  { name: "description", content: "注册 Selgetabel 账户" },
+    { title: "注册 - Selgetabel" },
+    { name: "description", content: "注册 Selgetabel 账户" },
   ];
 }
 
