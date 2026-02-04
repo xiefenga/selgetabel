@@ -1521,7 +1521,7 @@ dependencies = [
 
 ```bash
 # 数据库配置
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/llm_excel
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/selgetabel
 DATABASE_POOL_SIZE=10
 DATABASE_MAX_OVERFLOW=20
 

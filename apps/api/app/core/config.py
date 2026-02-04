@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     PROJECT_ROOT: Path = Path(__file__).parent.parent.parent.parent.parent
 
     # 数据库配置（应用与 Alembic 均使用 asyncpg，此处统一为 postgresql+asyncpg）
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/llm_excel"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/selgetabel"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 

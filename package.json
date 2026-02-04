@@ -1,10 +1,11 @@
 {
-  "name": "llm-excel",
+  "name": "selgetabel",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:api": "pnpm --filter @llm-excel/api dev",
+    "dev:api": "pnpm --filter @selgetabel/api dev",
     "dev:docker": "docker compose -f docker-compose.dev.yml up -d",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

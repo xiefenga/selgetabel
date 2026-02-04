@@ -1,5 +1,5 @@
 [project]
-name = "llm-excel-api"
+name = "selgetabel-api"
 version = "0.1.0"
 description = "LLM辅助生成Excel数据处理规则的系统 - API服务"
 readme = "README.md"
@@ -25,5 +25,5 @@ dependencies = [
     "minio>=7.2.10",
 ]
 [project.scripts]
-dev = "uvicorn llm_excel_api.main:app --reload --host localhost --port 8000"
+dev = "uvicorn app.main:app --reload --host localhost --port 8000"
 

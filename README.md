@@ -5,7 +5,7 @@
 ## 项目结构
 
 ```
-llm-excel/
+Selgetabel/
 ├── apps/
 │   ├── api/                    # Python FastAPI 后端（SSE）
 │   │   ├── app/
@@ -40,7 +40,7 @@ pnpm install
 ### 2) 安装后端依赖（apps/api）
 
 ```bash
-pnpm --filter @llm-excel/api install
+pnpm --filter @selgetabel/api install
 ```
 
 ### 3) 配置后端环境变量

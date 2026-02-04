@@ -5,7 +5,7 @@
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: llm-excel-dev-postgres
+    container_name: selgetabel-dev-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-llmexcel}
@@ -14,12 +14,12 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - llm_excel_postgres_dev_data:/var/lib/postgresql/data
+      - selgetabel_postgres_dev_data:/var/lib/postgresql/data
       - /etc/localtime:/etc/localtime:ro
 
   minio:
     image: minio/minio
-    container_name: llm-excel-dev-minio
+    container_name: selgetabel-dev-minio
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -29,9 +29,9 @@ services:
       - "9001:9001"
     command: server /data --console-address ":9001"
     volumes:
-      - llm_excel_minio_dev_data:/data
+      - selgetabel_minio_dev_data:/data
       - /etc/localtime:/etc/localtime:ro
 
 volumes:
-  llm_excel_postgres_dev_data:
-  llm_excel_minio_dev_data:
+  selgetabel_postgres_dev_data:
+  selgetabel_minio_dev_data:

@@ -18,17 +18,17 @@ cp .env.example .env
 编辑 `.env` 文件，设置数据库连接：
 
 ```env
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/llm_excel
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/selgetabel
 ```
 
 ## 3. 创建数据库
 
 ```bash
 # 使用 psql 创建数据库
-createdb llm_excel
+createdb selgetabel
 
 # 或使用 SQL
-psql -U postgres -c "CREATE DATABASE llm_excel;"
+psql -U postgres -c "CREATE DATABASE selgetabel;"
 ```
 
 ## 4. 初始化 Alembic（如果还没有）
@@ -60,7 +60,7 @@ alembic upgrade head
 检查表是否创建成功：
 
 ```bash
-psql -U postgres -d llm_excel -c "\dt"
+psql -U postgres -d selgetabel -c "\dt"
 ```
 
 应该看到以下表：
