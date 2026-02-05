@@ -24,7 +24,7 @@ cases:
   - id: "champion-query"
     name: "冠军查询"
     prompt: |
-      在 results 中筛选出 positionOrder 为 1（冠军）的记录，关联 drivers 获取车手姓名。结果写入一个新 Sheet。
+      [results 和 drivers 表通过 driverId 关联], 在 results 中筛选出 positionOrder 为 1（冠军）的记录，关联 drivers 获取车手姓名。结果写入一个新 Sheet。
     tags: ["筛选", "关联", "新Sheet"]
 
   - id: "nationality-wins"
@@ -36,7 +36,7 @@ cases:
   - id: "driver-record"
     name: "特定车手战绩"
     prompt: |
-      找出 drivers 中 driverRef 为 'hamilton' 的 ID，去 results 筛选该 ID 的所有记录。结果写入新 Sheet。
+      [results 和 drivers 表通过 driverId 关联], 找出 drivers 中 driverRef 为 'hamilton' 的 ID，去 results 筛选该 ID 的所有记录。结果写入新 Sheet。
     tags: ["查找", "筛选"]
 
   - id: "total-points"

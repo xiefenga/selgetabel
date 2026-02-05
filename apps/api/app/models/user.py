@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 from app.core.base import Base
+from app.core.config import settings
 
 if TYPE_CHECKING:
     from app.models.role import Role
@@ -27,7 +28,7 @@ class User(Base):
         index=True,
     )
     username: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    avatar: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    avatar: Mapped[str] = mapped_column(String(512), nullable=False, default=settings.DEFAULT_AVATAR)
     status: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, index=True)
 
     created_at: Mapped[datetime] = mapped_column(

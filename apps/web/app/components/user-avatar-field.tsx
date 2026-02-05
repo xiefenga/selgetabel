@@ -17,8 +17,8 @@ export const UserAvatarField = ({ value, onChange, label = "头像" }: UserAvata
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <Field>
-      <FieldTitle>{label}</FieldTitle>
+    <Field orientation="horizontal" className="items-center!">
+      <FieldTitle className="shrink-0 max-w-12 w-12">{label}</FieldTitle>
       <FieldContent>
         <div className="flex items-center gap-4">
           <button

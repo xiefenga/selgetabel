@@ -1,3 +1,4 @@
+import { useForm } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, LogIn, CheckCircle2 } from "lucide-react";
@@ -6,11 +7,11 @@ import { useNavigate, Link, useLocation } from "react-router";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Field, FieldContent, FieldError, FieldLabel } from "~/components/ui/field";
 
 import { login } from "~/api/auth";
 import { useAuthStore } from "~/stores/auth";
 
-import type { FormEvent } from "react";
 import type { Route } from "./+types/_public.login";
 
 export function meta({ }: Route.MetaArgs) {
@@ -24,12 +25,18 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { setUser } = useAuthStore();
-  const [account, setAccount] = useState("");
-  const [password, setPassword] = useState("");
+  const setUser = useAuthStore(state => state.setUser);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    handleSubmit,
+    register,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<{ account: string; password: string }>({
+    defaultValues: { account: "", password: "" },
+    mode: "onChange",
+  });
+
 
   // 检查是否有注册成功的消息
   useEffect(() => {
@@ -41,13 +48,10 @@ const LoginPage = () => {
     }
   }, [location]);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onLogin = async (values: { account: string; password: string }) => {
     setError(null);
-    setIsLoading(true);
-
     try {
-      const userInfo = await login({ account, password });
+      const userInfo = await login(values);
       // 更新 store 中的用户信息
       setUser(userInfo);
       // 使 react-query 缓存失效，触发重新获取
@@ -57,8 +61,6 @@ const LoginPage = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "登录失败，请重试";
       setError(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -76,7 +78,7 @@ const LoginPage = () => {
           <CardDescription>登录表单</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit(onLogin)} className="space-y-5">
             {/* Success Message */}
             {successMessage && (
               <div className="bg-success/10 border border-success/30 text-success px-4 py-3 rounded-xl text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -93,54 +95,56 @@ const LoginPage = () => {
             )}
 
             {/* Account Input */}
-            <div className="space-y-2">
-              <label htmlFor="account" className="text-sm font-medium text-gray-700">
-                账户
-              </label>
-              <Input
-                id="account"
-                type="text"
-                placeholder="邮箱或用户名"
-                value={account}
-                onChange={(e) => setAccount(e.target.value)}
-                disabled={isLoading}
-                required
-                className="h-12 bg-gray-50/50 border-gray-200 focus:border-brand focus:ring-brand/20 focus:bg-white transition-colors rounded-xl"
-              />
-            </div>
+            <Field data-invalid={Boolean(errors.account)}>
+              <FieldLabel htmlFor="account" className="text-gray-700">
+                邮箱
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="account"
+                  type="text"
+                  placeholder="请输入邮箱"
+                  disabled={isSubmitting}
+                  aria-invalid={Boolean(errors.account)}
+                  className="h-12 bg-gray-50/50 border-gray-200 focus:border-brand focus:ring-brand/20 focus:bg-white transition-colors rounded-xl"
+                  {...register("account", {
+                    required: "请输入邮箱",
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: "邮箱格式不正确",
+                    },
+                  })}
+                />
+                <FieldError errors={[errors.account]} className="text-xs text-error" />
+              </FieldContent>
+            </Field>
 
             {/* Password Input */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  密码
-                </label>
-                <button
-                  type="button"
-                  className="text-xs text-brand hover:text-brand-dark transition-colors"
-                >
-                  忘记密码？
-                </button>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="请输入密码"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-                required
-                className="h-12 bg-gray-50/50 border-gray-200 focus:border-brand focus:ring-brand/20 focus:bg-white transition-colors rounded-xl"
-              />
-            </div>
+            <Field data-invalid={Boolean(errors.password)}>
+              <FieldLabel htmlFor="password" className="text-gray-700">
+                密码
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="请输入密码"
+                  disabled={isSubmitting}
+                  aria-invalid={Boolean(errors.password)}
+                  className="h-12 bg-gray-50/50 border-gray-200 focus:border-brand focus:ring-brand/20 focus:bg-white transition-colors rounded-xl"
+                  {...register("password", { required: "请输入密码" })}
+                />
+                <FieldError errors={[errors.password]} className="text-xs text-error" />
+              </FieldContent>
+            </Field>
 
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={isLoading || !account || !password}
+              disabled={isSubmitting || !isValid}
               className="w-full h-12 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold text-base shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 transition-all duration-300 rounded-xl"
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   登录中...
@@ -178,22 +182,6 @@ const LoginPage = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Trust badges */}
-      <div className="flex items-center justify-center gap-6 text-xs text-gray-400">
-        <span className="flex items-center gap-1">
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-          </svg>
-          安全登录
-        </span>
-        <span className="flex items-center gap-1">
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-          数据加密
-        </span>
-      </div>
     </div>
   );
 };

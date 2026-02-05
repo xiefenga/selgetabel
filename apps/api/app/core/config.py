@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = ""
     MINIO_PUBLIC_BASE: str = ""
 
+    DEFAULT_AVATAR: str = "/storage/llm-excel/__SYS__/default_avatar.png"
+
     @property
     def DATABASE_URL_ASYNC(self) -> str:
         """始终返回 postgresql+asyncpg URL，供应用与 Alembic 使用。"""

@@ -1,7 +1,8 @@
 import { useForm, type SubmitHandler } from "react-hook-form";
 import type { FormEvent, ReactNode } from "react";
 
-import { Field, FieldContent, FieldTitle } from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { UserAvatarField } from "~/components/user-avatar-field";
 
 type UserProfileFormValues = {
@@ -45,28 +46,28 @@ export const UserProfileForm = ({ footer, initialValue, onSubmit }: UserProfileF
         onChange={(url) => setValue("avatar", url, { shouldDirty: true })}
       />
 
-      <Field>
-        <FieldTitle>用户名</FieldTitle>
-        <FieldContent>
-          <input
-            {...register("username")}
-            className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-xs outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            placeholder={initialValue.username}
-          />
-        </FieldContent>
-      </Field>
+      <div className="flex items-center gap-2">
+        <Label htmlFor="user-profile-username" className="shrink-0 w-12">用户名</Label>
+        <Input
+          id="user-profile-username"
+          className="flex-1"
+          {...register("username")}
+          placeholder={initialValue.username}
+        />
+      </div>
 
-      <Field>
-        <FieldTitle>邮箱</FieldTitle>
-        <FieldContent>
-          <input
-            type="email"
-            {...register("email")}
-            className="block w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-900 shadow-xs outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            placeholder={initialValue.email}
-          />
-        </FieldContent>
-      </Field>
+      <div className="flex items-center gap-2">
+        <Label htmlFor="user-profile-email" className="shrink-0 w-12">邮箱</Label>
+        <Input
+          id="user-profile-email"
+          type="email"
+          readOnly
+          aria-readonly="true"
+          {...register("email")}
+          className="bg-muted text-muted-foreground flex-1"
+          placeholder={initialValue.email}
+        />
+      </div>
 
       {footer && <div className="pt-1">{footer}</div>}
     </form>

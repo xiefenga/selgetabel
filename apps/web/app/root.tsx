@@ -34,7 +34,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <NiceModal.Provider>
             {children}
           </NiceModal.Provider>
-          <Toaster />
+          <Toaster position="top-center" />
         </QueryClientProvider>
         <ScrollRestoration />
         <Scripts />
