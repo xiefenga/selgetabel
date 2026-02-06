@@ -1,6 +1,7 @@
 """Excel 智能处理接口"""
 
 import asyncio
+import json
 import logging
 from typing import List, Optional
 from uuid import UUID
@@ -11,6 +12,9 @@ from sse_starlette.sse import EventSourceResponse, ServerSentEvent
 
 from app.api.deps import get_llm_client, get_current_user
 from app.core.sse import sse
+from app.engine import FileCollection
+from app.models.btrack import BTrack
+from app.processor.prompt import build_initial_user_message
 from app.services.processor_stream import (
     stream_excel_processing,
     StageContext,
@@ -170,6 +174,21 @@ async def process_excel_chat(
                 files = await get_files_by_ids_from_db(db, file_ids, current_user.id)
                 return await asyncio.to_thread(load_tables_from_files, files)
 
+            process_with_errors = False
+            process_errors = []
+
+            async def on_failure(errors: List[str]):
+                nonlocal process_errors
+                process_errors.extend(errors)
+                nonlocal process_with_errors
+                process_with_errors = True
+
+            file_collection: Optional[FileCollection] = None
+
+            async def on_load_tables(tables: FileCollection):
+                nonlocal file_collection
+                file_collection = tables
+
             # 执行处理流程
             async for sse_event in stream_excel_processing(
                 load_tables_fn=load_tables,
@@ -177,12 +196,26 @@ async def process_excel_chat(
                 stream_llm=True,
                 export_path_prefix=f"users/{current_user.id}/outputs",
                 on_event=on_event,
+                on_failure=on_failure,
+                on_load_tables=on_load_tables,
             ):
                 yield sse_event
 
             # === 完成 ===
             await repo.mark_completed(turn_id, actual_thread_id, tracker)
             await repo.commit()
+
+            if process_with_errors:
+                db.add(
+                    BTrack(
+                        reporter_id=current_user.id,
+                        steps=tracker.to_list(),
+                        errors=json.dumps(process_errors, ensure_ascii=False),
+                        thread_turn_id=turn_id,
+                        generation_prompt=build_initial_user_message(params.query,  file_collection.get_schemas_with_samples(sample_count=3))
+                    )
+                )
+                await db.commit()
 
     return EventSourceResponse(stream())
 

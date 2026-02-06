@@ -34,6 +34,10 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        # PostgreSQL 场景强烈建议
+        transactional_ddl=False,  # 避免整包 SQL 被包进一个大事务
+        compare_type=True,  # 类型变更可追踪
+        compare_server_default=True,
     )
     with context.begin_transaction():
         context.run_migrations()

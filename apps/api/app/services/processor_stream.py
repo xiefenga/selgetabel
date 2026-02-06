@@ -43,6 +43,8 @@ class StageContext:
 
 # 回调类型：接收 context，无返回值
 StageCallback = Callable[[StageContext], Awaitable[None]]
+# 埋点回调：整体流程失败时调用
+FailureCallback = Callable[[List], Awaitable[None]]
 
 
 # ============ 辅助函数 ============
@@ -181,6 +183,8 @@ async def stream_excel_processing(
     stream_llm: bool = True,
     export_path_prefix: Optional[str] = None,
     on_event: Optional[StageCallback] = None,
+    on_failure: Optional[FailureCallback] = None,
+    on_load_tables: Optional[Callable[[FileCollection], Awaitable[None]]] = None,
 ) -> AsyncGenerator[ServerSentEvent, None]:
     """
     完整的 Excel 处理流式输出
@@ -193,6 +197,8 @@ async def stream_excel_processing(
         stream_llm: 是否使用流式 LLM
         export_path_prefix: OSS 导出路径前缀，不传则跳过导出
         on_event: 事件回调（用于持久化等副作用）
+        on_failure: 整体流程失败回调（用于埋点等副作用）
+        on_load_tables: 加载表格后回调（可用于缓存等副作用）
 
     Yields:
         ServerSentEvent 事件
@@ -229,6 +235,8 @@ async def stream_excel_processing(
         tables = await load_tables_fn()
         files_info = build_file_collection_info(tables)
         load_output = {"files": files_info}
+        if on_load_tables:
+            await on_load_tables(tables)
 
         if on_event:
             await on_event(
@@ -321,6 +329,8 @@ async def stream_excel_processing(
             yield sse_step_done(
                 "complete", {"success": False, "errors": [error_msg]}
             )
+            if on_failure:
+                await on_failure([error_msg])
             return
 
     # === 3. export:result ===
@@ -375,5 +385,8 @@ async def stream_excel_processing(
     # === 4. complete ===
     success = result is not None and not result.has_errors()
     errors = result.errors if result and result.errors else None
+
+    if not success and on_failure:
+        await on_failure(errors)
 
     yield sse_step_done("complete", {"success": success, "errors": errors})
