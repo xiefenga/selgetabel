@@ -31,16 +31,15 @@ curl -fsSL https://raw.githubusercontent.com/xiefenga/selgetabel/main/install.sh
 
 脚本会自动：
 
-1. 下载 `docker` 目录到当前位置
+1. 下载 `docker` 目录中的部署文件到**当前目录**
 2. 从 `.env.example` 创建 `.env` 配置文件
 3. 显示详细的后续配置步骤
 
 完成后，按照提示：
 
 ```bash
-# 1. 配置环境变量
-cd docker
-nano .env
+# 1. 配置环境变量（注意：所有文件都在当前目录）
+vi .env
 
 # 必须修改的配置：
 # - OPENAI_API_KEY=xxx                  # OpenAI API 密钥

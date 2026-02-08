@@ -56,7 +56,7 @@ check_dependencies() {
 
 # Download and extract docker directory
 download_docker_dir() {
-    print_info "Downloading Selgetabel docker configuration from GitHub..."
+    print_info "Downloading Selgetabel deployment files from GitHub..."
 
     local temp_dir=$(mktemp -d)
     local tarball_url="https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/refs/heads/${BRANCH}.tar.gz"
@@ -68,7 +68,7 @@ download_docker_dir() {
         exit 1
     fi
 
-    print_info "Extracting docker directory..."
+    print_info "Extracting files..."
 
     # Extract docker directory
     tar -xzf "${temp_dir}/repo.tar.gz" -C "$temp_dir"
@@ -82,44 +82,80 @@ download_docker_dir() {
         exit 1
     fi
 
-    # Check if target directory already exists
-    if [ -d "./${TARGET_DIR}" ]; then
-        print_warning "Directory './${TARGET_DIR}' already exists."
-        read -p "Do you want to overwrite it? (y/N): " -n 1 -r
+    # Check if any files from docker directory already exist
+    local has_conflicts=false
+    # Enable dotglob to match hidden files
+    shopt -s dotglob
+    for item in "${source_docker_dir}"/*; do
+        local basename=$(basename "$item")
+        # Skip excluded files
+        local is_excluded=false
+        for excluded in "${EXCLUDED_FILES[@]}"; do
+            if [ "$basename" = "$excluded" ]; then
+                is_excluded=true
+                break
+            fi
+        done
+
+        if [ "$is_excluded" = true ]; then
+            continue
+        fi
+
+        if [ -e "./${basename}" ]; then
+            has_conflicts=true
+            break
+        fi
+    done
+    shopt -u dotglob
+
+    if [ "$has_conflicts" = true ]; then
+        print_warning "Some files from docker directory already exist in current directory."
+        read -p "Do you want to overwrite them? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             print_info "Installation cancelled."
             rm -rf "$temp_dir"
             exit 0
         fi
-        rm -rf "./${TARGET_DIR}"
     fi
 
-    # Copy docker directory
-    cp -r "$source_docker_dir" "./"
+    # Copy docker directory contents to current directory
+    print_info "Copying files to current directory..."
+    # Enable dotglob to match hidden files
+    shopt -s dotglob
+    for item in "${source_docker_dir}"/*; do
+        local basename=$(basename "$item")
 
-    # Remove excluded files
-    print_info "Removing excluded files..."
-    for excluded in "${EXCLUDED_FILES[@]}"; do
-        if [ -e "./${TARGET_DIR}/${excluded}" ]; then
-            rm -rf "./${TARGET_DIR}/${excluded}"
-            print_info "Removed: ${excluded}"
+        # Skip excluded files
+        local is_excluded=false
+        for excluded in "${EXCLUDED_FILES[@]}"; do
+            if [ "$basename" = "$excluded" ]; then
+                is_excluded=true
+                print_info "Skipped: ${excluded}"
+                break
+            fi
+        done
+
+        if [ "$is_excluded" = false ]; then
+            cp -r "$item" "./"
+            print_info "Copied: ${basename}"
         fi
     done
+    shopt -u dotglob
 
     # Cleanup
     rm -rf "$temp_dir"
 
-    print_success "Docker directory downloaded successfully!"
+    print_success "Deployment files downloaded successfully!"
 }
 
 # Setup environment file
 setup_env() {
-    if [ -f "./${TARGET_DIR}/.env.example" ]; then
-        if [ ! -f "./${TARGET_DIR}/.env" ]; then
+    if [ -f "./.env.example" ]; then
+        if [ ! -f "./.env" ]; then
             print_info "Creating .env file from .env.example..."
-            cp "./${TARGET_DIR}/.env.example" "./${TARGET_DIR}/.env"
-            print_warning "Please edit ./${TARGET_DIR}/.env to configure your environment variables."
+            cp "./.env.example" "./.env"
+            print_warning "Please edit .env to configure your environment variables."
         else
             print_info ".env file already exists, skipping..."
         fi
@@ -136,7 +172,7 @@ print_next_steps() {
     echo -e "${BLUE}Next steps:${NC}"
     echo ""
     echo "1. Configure environment variables:"
-    echo -e "   ${YELLOW}cd docker && vi .env${NC}"
+    echo -e "   ${YELLOW}vi .env${NC}"
     echo ""
     echo "2. Required environment variables:"
     echo "   - OPENAI_API_KEY (required)"
