@@ -134,7 +134,7 @@ services:
     # ports:
     #   - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data
       - /etc/localtime:/etc/localtime:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-llmexcel} -d ${POSTGRES_DB:-llmexcel}"]
@@ -155,14 +155,10 @@ services:
     #   - 9001:9001
     command: server /data --console-address ":9001"
     volumes:
-      - minio_data:/data
+      - ./minio_data:/data
       - /etc/localtime:/etc/localtime:ro
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-volumes:
-  minio_data:
-  postgres_data:
