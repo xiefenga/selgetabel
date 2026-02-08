@@ -200,6 +200,27 @@ Set in `docker/.env` (copy from `docker/.env.example`):
 **Production Deployment:**
 See `docker/README.md` for detailed deployment guide.
 
+## CI/CD - GitHub Actions
+
+**Multi-Architecture Docker Build:**
+- Workflow: `.github/workflows/docker-build-push.yml`
+- Supported architectures: `linux/amd64`, `linux/arm64`
+- Builds both API and Web images with multi-arch support
+
+**Triggers:**
+- **Auto:** Push tags matching `v*` (e.g., `v1.0.0`) - automatically pushes `latest` tag
+- **Manual:** Workflow dispatch in GitHub Actions UI - option to push `latest` tag
+
+**Required GitHub Secrets:**
+- `DOCKERHUB_TOKEN` (required) - Docker Hub access token with Read & Write permission
+- `DOCKERHUB_USERNAME` (optional) - Defaults to repository owner if not set
+
+**Built Images:**
+- `${DOCKERHUB_USERNAME}/selgetabel-api:${VERSION}`
+- `${DOCKERHUB_USERNAME}/selgetabel-web:${VERSION}`
+
+**How it works:** Uses Docker Buildx + QEMU on GitHub's x86 runners to build both amd64 (native) and arm64 (emulated) images, then creates a manifest list for automatic architecture selection.
+
 ## Code Conventions
 
 **Backend:**
