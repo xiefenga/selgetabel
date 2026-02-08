@@ -154,7 +154,7 @@ setup_env() {
     if [ -f "./.env.example" ]; then
         if [ ! -f "./.env" ]; then
             print_info "Creating .env file from .env.example..."
-            cp "./.env.example" "./.env"
+            mv "./.env.example" "./.env"
             print_warning "Please edit .env to configure your environment variables."
         else
             print_info ".env file already exists, skipping..."
@@ -174,13 +174,11 @@ print_next_steps() {
     echo "1. Configure environment variables:"
     echo -e "   ${YELLOW}vi .env${NC}"
     echo ""
-    echo "2. Required environment variables:"
-    echo "   - OPENAI_API_KEY (required)"
-    echo "   - OPENAI_BASE_URL (optional)"
-    echo "   - OPENAI_MODEL (optional)"
-    echo "   - POSTGRES_PASSWORD"
-    echo "   - MINIO_ROOT_PASSWORD"
-    echo "   - JWT_SECRET_KEY"
+    echo "2. update environment variables:"
+    echo "   - OPENAI_BASE_URL"
+    echo "   - OPENAI_MODEL"
+    echo "   - OPENAI_API_KEY (if use ollama, do not edit this variable)"
+    echo "   - JWT_SECRET_KEY (use openssl rand -hex 32 to generate)"
     echo ""
     echo "3. Start the application:"
     echo -e "   ${YELLOW}docker compose up -d${NC}"
