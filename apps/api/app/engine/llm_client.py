@@ -109,7 +109,7 @@ class LLMClient:
         else:
             full_messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
+                {"role": "user", "content": user_message or ""},
             ]
 
         log_msg = (
@@ -162,7 +162,7 @@ class LLMClient:
             # 简单模式：单条用户消息
             full_messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
+                {"role": "user", "content": user_message or ""}
             ]
 
         # 打印提示词日志
@@ -487,6 +487,55 @@ class LLMClient:
             # 注意：调用方需要在最后对 full_content 调用 _clean_json_response
         except Exception as e:
             raise RuntimeError(f"生成操作描述失败: {str(e)}") from e
+
+    # ==================== 数据分析 ====================
+
+    def analyze(self, prompt: str) -> str:
+        """
+        数据分析：直接接收提示词并返回分析结果
+
+        Args:
+            prompt: 预构建的分析提示词
+
+        Returns:
+            LLM 分析结果（自然语言）
+        """
+        try:
+            result = self._call_llm("analyze", prompt, None)
+            return result
+        except Exception as e:
+            raise RuntimeError(f"数据分析失败: {str(e)}") from e
+
+    def analyze_stream(self, prompt: str) -> Generator[Tuple[str, str], None, None]:
+        """
+        数据分析（流式输出，同步版本）
+
+        Args:
+            prompt: 预构建的分析提示词
+
+        Yields:
+            Tuple[str, str]: (delta, full_content) - 增量内容和累积的完整内容
+        """
+        try:
+            yield from self._call_llm_stream("analyze", prompt, None)
+        except Exception as e:
+            raise RuntimeError(f"数据分析失败: {str(e)}") from e
+
+    async def analyze_stream_async(self, prompt: str) -> AsyncGenerator[Tuple[str, str], None]:
+        """
+        数据分析（流式输出，异步版本）
+
+        Args:
+            prompt: 预构建的分析提示词
+
+        Yields:
+            Tuple[str, str]: (delta, full_content) - 增量内容和累积的完整内容
+        """
+        try:
+            async for item in self._call_llm_stream_async("analyze", prompt):
+                yield item
+        except Exception as e:
+            raise RuntimeError(f"数据分析失败: {str(e)}") from e
 
     # ==================== 辅助方法 ====================
 

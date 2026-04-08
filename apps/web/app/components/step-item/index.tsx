@@ -41,6 +41,10 @@ const STEP_CONFIG: Record<StepName, { label: string; icon: React.ReactNode }> = 
     label: "AI 对话",
     icon: <Brain className="w-4 h-4" />,
   },
+  analyze: {
+    label: "分析数据",
+    icon: <Brain className="w-4 h-4" />,
+  },
 }
 
 /** 步骤名称列表 */

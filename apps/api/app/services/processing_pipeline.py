@@ -279,6 +279,7 @@ async def stream_processing_pipeline(
         on_event=on_event,
         on_failure=on_failure,
         on_load_tables=on_load_tables,
+        intent_type=intent_type,
     ):
         yield sse_event
 

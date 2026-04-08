@@ -16,8 +16,8 @@ export interface UserMessage {
 
 // ========== Step 类型定义（对齐 SSE_SPEC 和 STEPS_STORAGE_SPEC）==========
 
-/** 步骤名称 (新增 "chat" 步骤) */
-export type StepName = "load" | "generate" | "validate" | "execute" | "export" | "chat";
+/** 步骤名称 */
+export type StepName = "load" | "generate" | "validate" | "execute" | "export" | "chat" | "analyze";
 
 /** 步骤状态 */
 export type StepStatus = "running" | "streaming" | "done" | "error";
@@ -92,7 +92,16 @@ export interface ExportStepOutput {
 /** chat 步骤输出 (新增，兼容纯字符串或对象) */
 export type ChatStepOutput = string | Record<string, unknown>;
 
-/** 步骤 Output 类型映射 (新增 chat 映射) */
+/** analyze 步骤输出 */
+export interface AnalyzeStepOutput {
+  content: string;
+  profile?: Record<string, unknown>;
+  quality_report?: unknown[];
+  relationships?: unknown[];
+  analysis_type?: string;
+}
+
+/** 步骤 Output 类型映射 */
 export type StepOutputMap = {
   load: LoadStepOutput;
   generate: GenerateStepOutput;
@@ -100,6 +109,7 @@ export type StepOutputMap = {
   execute: ExecuteStepOutput;
   export: ExportStepOutput;
   chat: ChatStepOutput;
+  analyze: AnalyzeStepOutput;
 };
 
 // ========== Step 记录类型（存储格式）==========

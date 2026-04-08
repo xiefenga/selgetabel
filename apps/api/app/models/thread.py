@@ -96,7 +96,7 @@ class ThreadTurn(Base):
 
     # 核心字段：存储所有步骤的执行历史
     steps: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
-    
+
     # 上下文快照：存储对话上下文信息
     context_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     

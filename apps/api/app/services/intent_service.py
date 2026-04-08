@@ -237,7 +237,7 @@ class IntentService:
         """
         # 如果没有数据库会话，返回简化上下文
         if not db_session:
-            return {
+            ctx = {
                 "intent": intent,
                 "thread_id": thread_id,
                 "file_ids": file_ids,
@@ -246,6 +246,11 @@ class IntentService:
                 "timestamp": self._get_current_timestamp(),
                 "note": "简化上下文（无数据库会话）"
             }
+            # ANALYSIS 意图：添加场景检测
+            if intent == IntentType.ANALYSIS.value:
+                from app.engine.prompt import detect_analysis_scenario
+                ctx["analysis_scenario"] = detect_analysis_scenario(query)
+            return ctx
         
         try:
             # 导入ContextService（避免循环导入）
@@ -268,7 +273,12 @@ class IntentService:
                         file_ids=file_ids,
                         max_history=5
                     )
-                    
+
+                    # ANALYSIS 意图：添加场景检测
+                    if intent == IntentType.ANALYSIS.value:
+                        from app.engine.prompt import detect_analysis_scenario
+                        context_data["analysis_scenario"] = detect_analysis_scenario(query)
+
                     return context_data
                     
                 except (ValueError, TypeError) as e:
@@ -276,7 +286,7 @@ class IntentService:
                     # 继续使用简化上下文
             
             # 返回简化上下文
-            return {
+            ctx = {
                 "intent": intent,
                 "thread_id": thread_id,
                 "file_ids": file_ids,
@@ -285,11 +295,15 @@ class IntentService:
                 "timestamp": self._get_current_timestamp(),
                 "note": "简化上下文（无有效线程ID或构建失败）"
             }
+            if intent == IntentType.ANALYSIS.value:
+                from app.engine.prompt import detect_analysis_scenario
+                ctx["analysis_scenario"] = detect_analysis_scenario(query)
+            return ctx
             
         except Exception as e:
             logger.error(f"构建上下文失败: {e}", exc_info=True)
             # 返回错误上下文
-            return {
+            ctx = {
                 "intent": intent,
                 "thread_id": thread_id,
                 "file_ids": file_ids,
@@ -299,6 +313,10 @@ class IntentService:
                 "error": str(e),
                 "note": "上下文构建失败"
             }
+            if intent == IntentType.ANALYSIS.value:
+                from app.engine.prompt import detect_analysis_scenario
+                ctx["analysis_scenario"] = detect_analysis_scenario(query)
+            return ctx
     
     def _get_error_result(self, query: str, file_ids: List[str], error_msg: str) -> Dict:
         """获取错误结果"""

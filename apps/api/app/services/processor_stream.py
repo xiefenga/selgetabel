@@ -188,11 +188,12 @@ async def stream_excel_processing(
     on_load_tables: Optional[Callable[[FileCollection], Awaitable[None]]] = None,
     history_turns: Optional[List[Dict[str, Any]]] = None,
     current_files: Optional[List[Dict[str, Any]]] = None,
+    intent_type: Optional[str] = None,
 ) -> AsyncGenerator[ServerSentEvent, None]:
     """
     完整的 Excel 处理流式输出
 
-    统一处理流程：load → generate → validate → execute → export → complete
+    统一处理流程：load → generate/analysis → validate → execute → export → complete
 
     Args:
         load_tables_fn: 加载数据的函数（由调用方实现）
@@ -204,6 +205,7 @@ async def stream_excel_processing(
         on_load_tables: 加载表格后回调（可用于缓存等副作用）
         history_turns: 历史对话记录（用于上下文构建）
         current_files: 当前文件信息（用于上下文构建）
+        intent_type: 意图类型（"analysis" | "processing" | None），决定使用哪个处理阶段
 
     Yields:
         ServerSentEvent 事件
@@ -272,7 +274,7 @@ async def stream_excel_processing(
     if history_turns is not None:
         context_builder = create_context_builder()
     
-    processor = ExcelProcessor(llm_client, context_builder)
+    processor = ExcelProcessor(llm_client, context_builder, intent_type=intent_type)
     config = ProcessConfig(stream_llm=stream_llm)
 
     # 构建上下文字典，传递给处理器

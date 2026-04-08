@@ -21,10 +21,18 @@ def make_json_serializable(obj: Any) -> Any:
     """
     将对象转换为可 JSON 序列化的格式
 
-    主要处理 ExcelError 等自定义类型
+    主要处理 ExcelError、numpy 类型等
     """
+    import numpy as np
+
     if isinstance(obj, ExcelError):
         return str(obj)
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
     elif isinstance(obj, dict):
         return {k: make_json_serializable(v) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -51,6 +59,37 @@ class TurnRepository:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _serialize_steps(self, tracker: StepTracker) -> list:
+        """
+        将 tracker.to_list() 序列化为完全兼容 JSON 的纯 Python 对象。
+
+        使用 JSON 往返确保所有 numpy/pandas 类型被彻底转换为原生类型。
+        """
+        import json as _json
+        import numpy as _np
+
+        raw = make_json_serializable(tracker.to_list())
+
+        def _convert(obj):
+            if isinstance(obj, _np.integer):
+                return int(obj)
+            if isinstance(obj, _np.floating):
+                return float(obj)
+            if isinstance(obj, _np.ndarray):
+                return obj.tolist()
+            if isinstance(obj, _np.bool_):
+                return bool(obj)
+            if isinstance(obj, dict):
+                return {k: _convert(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_convert(i) for i in obj]
+            if isinstance(obj, tuple):
+                return tuple(_convert(i) for i in obj)
+            return obj
+
+        cleaned = _convert(raw)
+        return _json.loads(_json.dumps(cleaned))
 
     async def get_thread(self, thread_id: UUID, user_id: UUID) -> Optional[Thread]:
         """
@@ -143,6 +182,12 @@ class TurnRepository:
         result = await self.db.execute(stmt)
         max_turn_number = result.scalar_one_or_none() or 0
         return max_turn_number + 1
+
+    async def get_turn(self, turn_id: UUID) -> Optional[ThreadTurn]:
+        """根据 turn_id 获取 turn"""
+        stmt = select(ThreadTurn).where(ThreadTurn.id == turn_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def create_turn(
         self,
@@ -273,7 +318,7 @@ class TurnRepository:
         result = await self.db.execute(stmt)
         turn = result.scalar_one_or_none()
         if turn:
-            turn.steps = make_json_serializable(tracker.to_list())
+            turn.steps = self._serialize_steps(tracker)
             flag_modified(turn, "steps")
             await self.db.flush()
 
@@ -291,7 +336,7 @@ class TurnRepository:
         if turn:
             turn.status = "processing"
             turn.started_at = datetime.now(timezone.utc)
-            turn.steps = make_json_serializable(tracker.to_list())
+            turn.steps = self._serialize_steps(tracker)
             flag_modified(turn, "steps")
             await self.db.flush()
 
@@ -318,7 +363,7 @@ class TurnRepository:
         if turn:
             turn.status = "completed"
             turn.completed_at = now
-            turn.steps = make_json_serializable(tracker.to_list())
+            turn.steps = self._serialize_steps(tracker)
             flag_modified(turn, "steps")
 
         # 更新 thread
@@ -352,7 +397,7 @@ class TurnRepository:
         turn = result.scalar_one_or_none()
         if turn:
             turn.status = "failed"
-            turn.steps = make_json_serializable(tracker.to_list())
+            turn.steps = self._serialize_steps(tracker)
             flag_modified(turn, "steps")
 
         # 更新线程健康状态为异常

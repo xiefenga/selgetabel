@@ -16,6 +16,7 @@ from app.models.user import User
 from app.services.chat_stream import stream_chat_response
 from app.services.intent_service import get_intent_service
 from app.services.processing_pipeline import stream_processing_pipeline
+from app.services.analysis_stream import stream_analysis_response
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,20 @@ async def chat(
                     yield event
                 return
 
-            if intent_result.get("intent") in [IntentType.PROCESSING.value, IntentType.ANALYSIS.value]:
+            if intent_result.get("intent") == IntentType.ANALYSIS.value:
+                # ANALYSIS 走轻量路径，直接流式返回，不经过 ExcelProcessor
+                async for event in stream_analysis_response(
+                    query=request.query,
+                    user_id=current_user.id,
+                    thread_id=request.thread_id,
+                    db=db,
+                    file_ids=[UUID(fid) for fid in file_ids],
+                    intent_context=intent_result.get("context", {}),
+                ):
+                    yield event
+                return
+
+            if intent_result.get("intent") == IntentType.PROCESSING.value:
                 async for event in stream_processing_pipeline(
                     db=db,
                     user_id=current_user.id,

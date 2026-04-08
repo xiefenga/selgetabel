@@ -10,7 +10,7 @@ from .types import (
     ProcessConfig,
     ProcessResult,
 )
-from .stages import GenerateValidateStage, ExecuteStage
+from .stages import GenerateValidateStage, ExecuteStage, AnalysisStage
 from .stages.errors import StageError
 
 if TYPE_CHECKING:
@@ -46,22 +46,40 @@ class ExcelProcessor:
             yield convert_to_sse(event)
     """
 
-    def __init__(self, llm_client: "LLMClient", context_builder: Optional["ContextBuilder"] = None):
+    def __init__(
+        self,
+        llm_client: "LLMClient",
+        context_builder: Optional["ContextBuilder"] = None,
+        intent_type: Optional[str] = None,
+    ):
         """
         初始化处理器
 
         Args:
             llm_client: LLM 客户端
             context_builder: 上下文构建器（可选）
+            intent_type: 意图类型（"analysis" | "processing" | None）
         """
         self.llm_client = llm_client
         self.context_builder = context_builder
+        self._intent_type = intent_type
 
-        # 创建各阶段实例（线性列表，保持可扩展性）
-        self._stages = [
-            GenerateValidateStage(llm_client, context_builder),  # 复合阶段：生成+验证（支持重试）
-            ExecuteStage(),
-        ]
+        # 根据意图类型创建阶段实例
+        self._stages = self._build_stages()
+
+    def _build_stages(self) -> list:
+        """根据意图类型构建阶段列表"""
+        if self._intent_type == "analysis":
+            # 数据分析意图：只运行分析阶段
+            return [
+                AnalysisStage(self.llm_client, self.context_builder),
+            ]
+        else:
+            # 默认/数据处理意图：生成+验证+执行
+            return [
+                GenerateValidateStage(self.llm_client, self.context_builder),  # 复合阶段：生成+验证（支持重试）
+                ExecuteStage(),
+            ]
 
     def process(
         self,

@@ -1189,3 +1189,386 @@ def get_generation_prompt_with_context(table_schemas: dict = None, analysis_resu
 def get_system_prompt_with_schema(table_schemas: dict = None) -> str:
     """兼容旧接口"""
     return get_generation_prompt_with_context(table_schemas)
+
+
+# ==================== 数据分析提示词 ====================
+
+
+# L1: 基本概况分析提示词
+ANALYSIS_PROMPT_L1_BASIC = """你是数据分析助手。以下是数据的简要概况信息，请据此回答用户的问题。
+
+## 用户问题
+{query}
+
+## 数据概况
+{profile_text}
+
+## 回答要求
+1. 简洁明了地描述数据的基本情况
+2. 列出主要列名及其含义
+3. 说明数据的大致规模（行数、是否采样等）
+
+请开始回答："""
+
+
+# L1: 数据质量分析提示词
+ANALYSIS_PROMPT_L1_QUALITY = """你是数据分析助手。以下是数据质量检测报告，请据此回答用户的问题。
+
+## 用户问题
+{query}
+
+## 数据质量报告
+{quality_text}
+
+## 回答要求
+1. 清晰列出发现的数据质量问题
+2. 对每个问题给出严重程度评估
+3. 提供改进建议
+4. 如果没有问题，简要说"数据质量良好"
+
+请开始分析："""
+
+
+# L2: 开放分析提示词（全面洞察）
+ANALYSIS_PROMPT_L2_OPEN = """你是数据分析助手。请基于以下数据信息和质量报告，对数据进行全面分析。
+
+## 用户问题
+{query}
+
+## 数据概况
+{profile_text}
+
+## 数据质量
+{quality_text}
+
+## 表间关系
+{relationships_text}
+
+## 回答要求
+1. 基于以上真实数据信息进行分析，不要编造数据
+2. 如果数据存在质量问题（如空值、异常值），请在分析中提及
+3. 如果发现数据间的关联或规律，请重点说明
+4. 回答要清晰、有条理，适当使用数字和数据
+5. 如果数据不足以回答问题，请明确说明
+6. 分析要有深度，挖掘数据背后的业务含义
+
+请开始全面分析："""
+
+
+# L2: 指定维度分析提示词
+ANALYSIS_PROMPT_L2_DIMENSION = """你是数据分析助手。请按用户指定的维度对数据进行聚合分析。
+
+## 用户问题
+{query}
+
+## 数据概况
+{profile_text}
+
+## 聚合结果
+{aggregated_text}
+
+## 数据质量
+{quality_text}
+
+## 回答要求
+1. 基于聚合结果解读数据模式
+2. 解释各维度值的差异和原因
+3. 指出显著的统计特征
+4. 如有异常，提出可能的原因
+
+请开始分析："""
+
+
+# L2: 多表联合分析提示词
+ANALYSIS_PROMPT_L2_MULTI_TABLE = """你是数据分析助手。请对多表关联后的数据进行综合分析。
+
+## 用户问题
+{query}
+
+## 数据概况
+{profile_text}
+
+## 表间关系
+{relationships_text}
+
+## 关联后的数据画像
+{joined_profile_text}
+
+## 数据质量
+{quality_text}
+
+## 回答要求
+1. 充分利用多表关联后的信息
+2. 揭示跨表的业务关联
+3. 发现单一表无法看到的模式
+4. 分析要有深度和洞察
+
+请开始分析："""
+
+
+# L3: 相关性分析提示词
+ANALYSIS_PROMPT_L3_CORRELATION = """你是数据分析助手。请分析指定列之间的相关性。
+
+## 用户问题
+{query}
+
+## 相关性分析结果
+{correlation_text}
+
+## 数据概况（列的基本统计）
+{profile_text}
+
+## 回答要求
+1. 解释相关性的强度和方向
+2. 说明统计学含义
+3. 联系业务场景解读
+4. 指出相关性不等于因果关系
+
+请开始分析："""
+
+
+# L3: 对比分析提示词
+ANALYSIS_PROMPT_L3_COMPARISON = """你是数据分析助手。请对比分析不同组之间的差异。
+
+## 用户问题
+{query}
+
+## 对比结果
+{comparison_text}
+
+## 数据质量
+{quality_text}
+
+## 回答要求
+1. 列出各组的Key metrics
+2. 指出显著差异
+3. 分析差异的可能原因
+4. 给出业务建议
+
+请开始对比分析："""
+
+
+# L3: 趋势分析提示词
+ANALYSIS_PROMPT_L3_TREND = """你是数据分析助手。请分析数据的时间趋势。
+
+## 用户问题
+{query}
+
+## 趋势分析结果
+{trend_text}
+
+## 数据概况
+{profile_text}
+
+## 回答要求
+1. 描述整体趋势走向
+2. 识别周期性模式
+3. 指出异常波动
+4. 预测未来可能的变化
+
+请开始趋势分析："""
+
+
+# L3: 分布分析提示词
+ANALYSIS_PROMPT_L3_DISTRIBUTION = """你是数据分析助手。请分析数据的分布特征。
+
+## 用户问题
+{query}
+
+## 分布统计结果
+{distribution_text}
+
+## 数据概况
+{profile_text}
+
+## 回答要求
+1. 描述主要分布形态
+2. 指出集中趋势和离散程度
+3. 识别异常分布
+4. 解释业务含义
+
+请开始分布分析："""
+
+
+# L4: 归因分析提示词
+ANALYSIS_PROMPT_L4_CAUSATION = """你是数据分析助手。请分析并推断数据现象背后的原因。
+
+## 用户问题
+{query}
+
+## 多维度下钻数据
+{drilldown_text}
+
+## 数据概况
+{profile_text}
+
+## 表间关系
+{relationships_text}
+
+## 回答要求
+1. 基于数据分析结果进行推断
+2. 提出可能的原因假设
+3. 指出支持的证据
+4. 承认推断的不确定性
+5. 给出验证建议
+
+请开始归因分析："""
+
+
+# L4: 关系发现提示词
+ANALYSIS_PROMPT_L4_RELATION_DISCOVERY = """你是数据分析助手。请基于相关性扫描结果，发现数据中隐藏的关联规律。
+
+## 用户问题
+{query}
+
+## 相关性扫描结果
+{correlation_scan_text}
+
+## 数据概况
+{profile_text}
+
+## 表间关系
+{relationships_text}
+
+## 回答要求
+1. 解读发现的强相关关系
+2. 联系业务场景解释相关性的含义
+3. 指出需要注意的相关性陷阱（如伪相关）
+4. 如果相关性暗示可能的因果关系，提出验证假设
+5. 用通俗的语言解释统计概念
+
+请开始解读："""
+
+
+# ==================== 提示词获取函数 ====================
+
+
+def get_analysis_prompt(
+    scenario: str,
+    query: str,
+    profile_text: str,
+    quality_text: str = "",
+    relationships_text: str = "",
+    aggregated_text: str = "",
+    joined_profile_text: str = "",
+    correlation_text: str = "",
+    comparison_text: str = "",
+    trend_text: str = "",
+    distribution_text: str = "",
+    drilldown_text: str = "",
+    correlation_scan_text: str = "",
+) -> str:
+    """
+    根据分析场景获取对应的提示词
+
+    Args:
+        scenario: 分析场景类型
+            - "l1_basic": 基本概况
+            - "l1_quality": 数据质量
+            - "l2_open": 开放分析
+            - "l2_dimension": 指定维度分析
+            - "l2_multi_table": 多表联合分析
+            - "l3_correlation": 相关性分析
+            - "l3_comparison": 对比分析
+            - "l3_trend": 趋势分析
+            - "l3_distribution": 分布分析
+            - "l4_causation": 归因分析
+            - "default": 默认通用分析
+        query: 用户问题
+        profile_text: 数据画像文本
+        quality_text: 质量报告文本
+        relationships_text: 关系信息文本
+        aggregated_text: 聚合结果文本
+        joined_profile_text: 联合后的画像文本
+        correlation_text: 相关性分析文本
+        comparison_text: 对比分析文本
+        trend_text: 趋势分析文本
+        distribution_text: 分布分析文本
+        drilldown_text: 下钻分析文本
+
+    Returns:
+        格式化后的提示词
+    """
+    prompts = {
+        "l1_basic": ANALYSIS_PROMPT_L1_BASIC,
+        "l1_quality": ANALYSIS_PROMPT_L1_QUALITY,
+        "l2_open": ANALYSIS_PROMPT_L2_OPEN,
+        "l2_dimension": ANALYSIS_PROMPT_L2_DIMENSION,
+        "l2_multi_table": ANALYSIS_PROMPT_L2_MULTI_TABLE,
+        "l3_correlation": ANALYSIS_PROMPT_L3_CORRELATION,
+        "l3_comparison": ANALYSIS_PROMPT_L3_COMPARISON,
+        "l3_trend": ANALYSIS_PROMPT_L3_TREND,
+        "l3_distribution": ANALYSIS_PROMPT_L3_DISTRIBUTION,
+        "l4_causation": ANALYSIS_PROMPT_L4_CAUSATION,
+        "l4_relation_discovery": ANALYSIS_PROMPT_L4_RELATION_DISCOVERY,
+    }
+
+    template = prompts.get(scenario, prompts["l2_open"])
+
+    return template.format(
+        query=query,
+        profile_text=profile_text,
+        quality_text=quality_text or "未检测到明显质量问题",
+        relationships_text=relationships_text or "未检测到表间关联",
+        aggregated_text=aggregated_text,
+        joined_profile_text=joined_profile_text or profile_text,
+        correlation_text=correlation_text,
+        comparison_text=comparison_text,
+        trend_text=trend_text,
+        distribution_text=distribution_text,
+        drilldown_text=drilldown_text,
+        correlation_scan_text=correlation_scan_text or "未进行相关性扫描",
+    )
+
+
+def detect_analysis_scenario(query: str) -> str:
+    """
+    从用户问题中检测分析场景
+
+    Args:
+        query: 用户问题
+
+    Returns:
+        场景类型字符串
+    """
+    query_lower = query.lower()
+
+    # L1 场景检测
+    if any(kw in query_lower for kw in ["有什么问题", "质量", "空值", "缺失", "重复", "异常", "quality", "problem", "issue", "null", "missing", "duplicate", "anomaly"]):
+        return "l1_quality"
+
+    if any(kw in query_lower for kw in ["多少行", "多少列", "有哪些", "什么数据", "大概是", "概况", "基本"]):
+        return "l1_basic"
+
+    # L4 场景检测（优先于 L3，因为更具体）
+    if any(kw in query_lower for kw in ["为什么", "原因", "归因", "导致", "why", "cause", "reason"]):
+        return "l4_causation"
+
+    if any(kw in query_lower for kw in ["发现", "隐藏", "规律", "discover", "find patterns", "hidden"]):
+        return "l4_relation_discovery"
+
+    if any(kw in query_lower for kw in ["列之间", "字段之间", "字段的关系", "columns relationship"]):
+        return "l4_relation_discovery"
+
+    # L3 专项场景检测
+    if any(kw in query_lower for kw in ["关系", "相关", "关联", "correl", "correlation", "relationship"]):
+        return "l3_correlation"
+
+    if any(kw in query_lower for kw in ["对比", "差异", "比较", "difference", "compare", "diff"]):
+        return "l3_comparison"
+
+    if any(kw in query_lower for kw in ["趋势", "走势", "变化", "时间", "trend", "change", "over time"]):
+        return "l3_trend"
+
+    if any(kw in query_lower for kw in ["分布", "占比", "分散", "distribution", "percent", "spread"]):
+        return "l3_distribution"
+
+    # L2 场景检测
+    if any(kw in query_lower for kw in ["各", "每个", "按", "分组", "维度"]):
+        return "l2_dimension"
+
+    if any(kw in query_lower for kw in ["结合", "关联", "联合", "多表", "跨表"]):
+        return "l2_multi_table"
+
+    # 默认 L2 开放分析
+    return "l2_open"
