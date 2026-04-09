@@ -87,6 +87,8 @@ data: {
 | `validate` | 验证操作     | `{ "valid": true }`                                             |
 | `execute`  | 执行操作     | `{ "strategy": "...", "manual_steps": "...", "errors": [...] }` |
 | `export`   | 导出结果     | `{ "output_files": [...] }`                                     |
+| `chat`     | 纯对话响应   | `{ "content": "..." }` 或直接文本                              |
+| `analyze`  | 数据分析响应 | `{ "content": "...", "profile": {...}, "quality_report": {...}, "analysis_type": "..." }` |
 | `complete` | 流程完成标志 | `{ "success": true, "errors": null }`                           |
 
 #### 状态流转
@@ -251,7 +253,7 @@ data: { "step": "complete", "status": "done", "output": { "success": false, "err
 
 ## 四、完整事件流示例
 
-### 4.1 成功流程（/chat 接口）
+### 4.1 成功流程（/chat 接口 - PROCESSING 意图）
 
 ```
 event: session
@@ -272,6 +274,35 @@ data: { "step": "execute", "stage_id": "exec-001", "status": "done", "output": {
 
 data: { "step": "export", "stage_id": "exp-001", "status": "running" }
 data: { "step": "export", "stage_id": "exp-001", "status": "done", "output": { "output_files": [...] } }
+
+data: { "step": "complete", "status": "done", "output": { "success": true, "errors": null } }
+```
+
+### 4.2 成功流程（/chat 接口 - ANALYSIS 意图）
+
+```
+event: session
+data: { "thread_id": "abc", "turn_id": "def", "title": "分析销售数据", "is_new_thread": true }
+
+data: { "step": "load", "stage_id": "load-001", "status": "running" }
+data: { "step": "load", "stage_id": "load-001", "status": "done", "output": { "files": [...] } }
+
+data: { "step": "analyze", "stage_id": "analyze-001", "status": "running" }
+data: { "step": "analyze", "stage_id": "analyze-001", "status": "streaming", "delta": "正在分析..." }
+data: { "step": "analyze", "stage_id": "analyze-001", "status": "done", "output": { "content": "...", "analysis_type": "l2_open" } }
+
+data: { "step": "complete", "status": "done", "output": { "success": true, "errors": null } }
+```
+
+### 4.3 成功流程（/chat 接口 - CHAT 意图）
+
+```
+event: session
+data: { "thread_id": "abc", "turn_id": "def", "title": "聊天对话", "is_new_thread": true }
+
+data: { "step": "chat", "stage_id": "chat-001", "status": "running" }
+data: { "step": "chat", "stage_id": "chat-001", "status": "streaming", "delta": "你好！" }
+data: { "step": "chat", "stage_id": "chat-001", "status": "done", "output": "你好！有什么可以帮助你的吗？" }
 
 data: { "step": "complete", "status": "done", "output": { "success": true, "errors": null } }
 ```
@@ -376,5 +407,6 @@ function handleStep(step, status, data) {
 
 | 版本 | 日期       | 变更                                                          |
 | ---- | ---------- | ------------------------------------------------------------- |
+| 3.0  | 2026-04-09 | 新增 `chat` 步骤（纯对话）；新增 `analyze` 步骤（数据分析） |
 | 2.0  | 2025-02-02 | 统一 /chat 和 /fixture 接口；简化 step 命名；更新 output 格式 |
 | 1.0  | 2025-01-28 | 初始版本                                                      |

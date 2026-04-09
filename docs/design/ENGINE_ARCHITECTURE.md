@@ -572,6 +572,16 @@ class ExecutionResult:
 | **Operation**        | 操作定义（数据类） | 操作参数                        | 无（纯数据）                        |
 | **ExecutionResult**  | 执行结果（数据类） | 结果数据                        | 辅助方法（add\_\*）                 |
 
+### 分析模块（新增）
+
+| 类                      | 职责                       | 核心数据                       | 主要方法                                |
+| ----------------------- | -------------------------- | ------------------------------ | ------------------------------------- |
+| **DataProfiler**        | 数据画像提取               | TableProfile, MultiTableProfile | `profile_table()`, `profile_tables()` |
+| **QualityChecker**      | 数据质量检测               | QualityReport                  | `check_quality()`, `check_nulls()`    |
+| **RelationshipDetector**| 表关系识别                 | Relationship                   | `detect_relationships()`              |
+| **AnalysisFunctions**   | 专项分析函数               | 统计分析                       | `pearson_correlation()`, `trend_analysis()` |
+| **AnalysisStage**       | 数据分析阶段（Pipeline）   | FileCollection, query          | `run()`, `_handle_l2_scenario()` 等   |
+
 ---
 
 ---
@@ -936,5 +946,96 @@ errors = validator.validate(formula)
 
 ---
 
-**文档版本**：2026-01-30
+## 📊 数据分析模块（2026-04 新增）
+
+### 10. **DataProfiler** - 数据画像提取器
+
+**职责**：从 Table 提取结构化的统计特征
+
+**核心方法**：
+
+```python
+def profile_table(self, table: Table, sample_count: int = 100) -> TableProfile
+    """提取单表的画像"""
+
+def profile_tables(self, tables: FileCollection, for_llm: bool = True) -> MultiTableProfile
+    """提取多表画像，识别表关系"""
+
+def format_multi_profile_for_llm(self, profile: MultiTableProfile) -> str
+    """格式化多表画像为 LLM 友好文本"""
+```
+
+**画像内容**：
+
+| 字段 | 说明 |
+| ---- | ---- |
+| `row_count`, `column_count` | 基本信息 |
+| `columns[].type` | 列类型（number/text/date/boolean） |
+| `columns[].min/max/mean/median/std` | 数值列统计 |
+| `columns[].null_ratio` | 空值比例 |
+| `columns[].top_values` | 高频值（文本列） |
+
+---
+
+### 11. **QualityChecker** - 数据质量检测器
+
+**职责**：检测空值、重复、异常值、格式一致性
+
+**核心方法**：
+
+```python
+def check_quality(self, table: Table) -> QualityReport
+    """完整质量检测"""
+
+def check_nulls(self, table: Table) -> Dict[str, float]
+    """检测空值比例"""
+
+def check_duplicates(self, table: Table) -> Dict
+    """检测重复行"""
+
+def check_anomalies(self, table: Table, column: str) -> List[Any]
+    """检测数值列异常值（3σ原则）"""
+```
+
+---
+
+### 12. **AnalysisFunctions** - 专项分析函数
+
+**职责**：支持 L3 专项分析场景
+
+**核心函数**：
+
+| 函数 | 功能 |
+| ---- | ---- |
+| `pearson_correlation(x, y)` | 皮尔逊相关系数 |
+| `correlation_analysis(df, col_a, col_b)` | 两列相关性分析 |
+| `group_comparison(df, group_by, metrics)` | 分组对比 |
+| `trend_analysis(df, date_col, value_col)` | 趋势分析 |
+| `distribution_stats(df, column)` | 分布统计 |
+
+---
+
+### 13. **AnalysisStage** - 数据分析阶段
+
+**职责**：协调数据分析流程（Pipeline Stage）
+
+**支持的场景**：
+
+| 场景 | 说明 |
+| ---- | ---- |
+| `l1_basic` | 基本概况 |
+| `l1_quality` | 数据质量检测 |
+| `l2_open` | 开放分析 |
+| `l2_dimension` | 指定维度分析 |
+| `l2_multi_table` | 多表联合 |
+| `l3_correlation` | 相关性分析 |
+| `l3_comparison` | 对比分析 |
+| `l3_trend` | 趋势分析 |
+| `l3_distribution` | 分布描述 |
+| `l4_causation` | 原因归因 |
+| `l4_relation_discovery` | 关系发现 |
+
+---
+
+**文档版本**：2026-04-09
 **模块路径**：`apps/api/app/engine/`

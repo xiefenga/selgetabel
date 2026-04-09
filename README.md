@@ -230,6 +230,26 @@ Intent Recognition → Generate + Validate (LLM, with retry) → Execute → Exp
 | `create_sheet` | Create new worksheet |
 | `pivot` | Data pivot table (crosstab) |
 
+### Data Analysis
+
+Upload Excel files and ask questions in natural language. The system extracts data profiles, detects quality issues, and generates insights using LLM.
+
+**Analysis Scenarios**:
+
+| Level | Scenario | Example |
+|-------|----------|---------|
+| L1: Info Extract | Basic overview | "What's in this data?" |
+| L1: Info Extract | Data quality | "Any issues with this data?" |
+| L2: General | Open analysis | "Analyze this data" |
+| L2: General | Dimension analysis | "How are sales by region?" |
+| L2: General | Multi-table | "Combine with customer table" |
+| L3: Specialized | Correlation | "Relationship between sales and quantity?" |
+| L3: Specialized | Comparison | "Difference between East and West?" |
+| L3: Specialized | Trend | "Sales trend over time?" |
+| L3: Specialized | Distribution | "Sales distribution by product?" |
+| L4: Intelligent | Causation | "Why does Region C have highest sales?" |
+| L4: Intelligent | Relation discovery | "What relationships exist between columns?" |
+
 ## Documentation
 
 - [Operation Specification](docs/specs/OPERATION_SPEC.md) — JSON operation format

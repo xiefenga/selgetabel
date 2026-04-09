@@ -71,7 +71,7 @@
 
 | 字段           | 类型   | 必填 | 说明                                                |
 | -------------- | ------ | ---- | --------------------------------------------------- |
-| `step`         | string | 是   | 步骤名称：load, generate, validate, execute, export |
+| `step`         | string | 是   | 步骤名称：load, generate, validate, execute, export, chat, analyze |
 | `status`       | string | 是   | 状态：running, done, error                          |
 | `output`       | object | 否   | 步骤输出（仅 status=done 时）                       |
 | `error`        | object | 否   | 错误信息（仅 status=error 时）                      |
@@ -87,6 +87,8 @@
 | `validate` | `{ "valid": true }`                                                                 |
 | `execute`  | `{ "strategy": "...", "manual_steps": "...", "variables": {...}, "errors": [...] }` |
 | `export`   | `{ "output_files": [...] }`                                                         |
+| `chat`     | `{ "content": "..." }` 或直接文本                                                  |
+| `analyze`  | `{ "content": "...", "profile": {...}, "quality_report": [...], "analysis_type": "..." }` |
 
 ### 2.4 error 结构
 

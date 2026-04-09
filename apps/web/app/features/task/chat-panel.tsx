@@ -368,14 +368,21 @@ const TurnRenderer = ({
             <section className="space-y-2">
               {assistantMessage.steps.map((record, index) => {
                 // ==========================================
-                // 💡 重点修改位置：拦截 'chat' 步骤，用普通文本渲染
+                // 💡 重点修改位置：拦截 'chat' 和 'analyze' 步骤，用普通文本渲染
                 // ==========================================
-                if (record.step === 'chat') {
+                if (record.step === 'chat' || record.step === 'analyze') {
                   let content = '';
                   if (record.status === 'streaming') {
                     content = (record as any).streamContent || '';
                   } else if (record.status === 'done') {
-                    content = (record as any).output || '';
+                    // chat: output is string directly
+                    // analyze: output is AnalyzeStepOutput with content field
+                    const output = (record as any).output;
+                    if (typeof output === 'string') {
+                      content = output;
+                    } else if (output && typeof output.content === 'string') {
+                      content = output.content;
+                    }
                   }
 
                   const isStreaming = record.status === 'streaming';

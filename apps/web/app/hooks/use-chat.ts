@@ -33,7 +33,7 @@ export interface InputType {
 
 /** 步骤名称列表（用于验证） */
 // use-chat.ts 顶部附近
-const STEP_NAMES: StepName[] = ["load", "generate", "validate", "execute", "export", "chat"]; // 👈 加上 "chat"
+const STEP_NAMES: StepName[] = ["load", "generate", "validate", "execute", "export", "chat", "analyze"];
 
 /** 判断是否为有效的步骤名称 */
 function isStepName(step: string): step is StepName {
