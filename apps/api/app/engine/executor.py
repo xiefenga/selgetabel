@@ -414,7 +414,7 @@ class FormulaEvaluator:
         return ops[op](left, right)
 
 
-class Executor:
+class ExcelExecutor:
     """操作执行引擎"""
 
     def __init__(self, tables: FileCollection):

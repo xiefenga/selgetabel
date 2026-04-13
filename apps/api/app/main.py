@@ -9,10 +9,11 @@ from dotenv import load_dotenv
 
 from app.api.main import api_router
 from app.schemas.response import ApiResponse
-from app.core.database import get_db
+from app.core.database import get_db, AsyncSessionLocal
 from app.core.init_permissions import init_permissions
 from app.core.version_check import verify_versions_on_startup
 from app.core.branding import get_product_name, get_product_description
+from app.core.startup_validation import run_startup_validations
 
 # 导入版本信息
 try:
@@ -41,8 +42,11 @@ OPENAPI_DESCRIPTION = """
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
-    # 启动时初始化权限系统
     print(f"{get_product_name()} API v{__version__}  {__build_time__}")
+
+    # Phase 0: 启动校验
+    async with AsyncSessionLocal() as db:
+        await run_startup_validations(db)
 
     yield
 

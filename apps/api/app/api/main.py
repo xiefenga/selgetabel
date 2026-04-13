@@ -22,8 +22,3 @@ api_router.include_router(user.router, tags=["用户"])
 
 api_router.include_router(llm.router, tags=["LLM配置"])
 
-# 只在开发环境启用 fixture 路由
-if settings.ENV == "development":
-    from app.api.routes import fixture
-
-    api_router.include_router(fixture.router, tags=["测试数据"])

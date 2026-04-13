@@ -99,7 +99,14 @@ class ThreadTurn(Base):
 
     # 上下文快照：存储对话上下文信息
     context_snapshot: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
-    
+
+    # LangChain ConversationBufferMemory 序列化结果
+    messages_history: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="LangChain ConversationBufferMemory 序列化结果"
+    )
+
     # 父轮次ID：支持对话链
     parent_turn_id: Mapped[Optional[UUID]] = mapped_column(
         PGUUID(as_uuid=True),

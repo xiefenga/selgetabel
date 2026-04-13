@@ -62,6 +62,8 @@ class BobMaasProvider(LLMProvider):
             body["temperature"] = request.temperature
         if request.max_tokens is not None:
             body["max_tokens"] = request.max_tokens
+        if request.tools:
+            body["tools"] = request.tools
         if stream:
             body["stream"] = True
         return body

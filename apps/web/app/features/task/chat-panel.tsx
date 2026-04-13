@@ -368,9 +368,10 @@ const TurnRenderer = ({
             <section className="space-y-2">
               {assistantMessage.steps.map((record, index) => {
                 // ==========================================
-                // 💡 重点修改位置：拦截 'chat' 和 'analyze' 步骤，用普通文本渲染
+                // 💡 重点修改位置：拦截纯文本回复类步骤，用普通文本渲染（不显示步骤栏）
                 // ==========================================
-                if (record.step === 'chat' || record.step === 'analyze') {
+                const CHAT_LIKE_STEPS = ['chat', 'analyze', 'hello', 'clarify'];
+                if (CHAT_LIKE_STEPS.includes(record.step)) {
                   let content = '';
                   if (record.status === 'streaming') {
                     content = (record as any).streamContent || '';

@@ -445,6 +445,93 @@ class TurnRepository:
             logger.error(f"更新上下文快照失败: {e}", exc_info=True)
             return False
 
+    async def get_or_create_thread(
+        self,
+        user_id: UUID,
+        thread_id: Optional[UUID],
+        initial_query: str,
+    ) -> tuple["Thread", bool]:
+        """
+        获取或创建线程。
+
+        Args:
+            user_id: 用户 ID
+            thread_id: 线程 ID（None 表示创建新线程）
+            initial_query: 初始查询（用于生成标题）
+
+        Returns:
+            (Thread, is_new): 线程对象 + 是否是新创建
+        """
+        if thread_id:
+            existing = await self.get_thread(thread_id, user_id)
+            if existing:
+                return existing, False
+
+        title = self._generate_thread_title(initial_query)
+        thread = await self.create_thread(user_id, title)
+        return thread, True
+
+    def _generate_thread_title(self, query: str) -> str:
+        """生成线程标题（取查询前3个词）"""
+        words = query.strip().split()
+        title = " ".join(words[:3])[:50]
+        return title or "新对话"
+
+    async def get_latest_turn(self, thread_id: UUID) -> Optional["ThreadTurn"]:
+        """
+        获取线程最新的一个 Turn。
+
+        Args:
+            thread_id: 线程 ID
+
+        Returns:
+            最新 Turn 或 None（线程无 Turn 时）
+        """
+        turns = await self.get_thread_turns(thread_id, limit=1)
+        return turns[0] if turns else None
+
+    async def save_messages_history(
+        self,
+        turn_id: UUID,
+        messages: list[dict],
+    ) -> None:
+        """
+        保存对话历史到 Turn。
+
+        Args:
+            turn_id: Turn ID
+            messages: [{"role": "user"|"assistant", "content": str}] 列表
+        """
+        turn = await self.get_turn(turn_id)
+        if not turn:
+            logger.warning(f"save_messages_history: turn {turn_id} 不存在，跳过")
+            return
+        turn.messages_history = {"messages": messages}
+        flag_modified(turn, "messages_history")
+        await self.flush()
+
+    async def load_messages_history(
+        self,
+        thread_id: UUID,
+    ) -> list[dict]:
+        """
+        从线程最新 Turn 加载对话历史。
+
+        Args:
+            thread_id: 线程 ID
+
+        Returns:
+            [{"role": ..., "content": ...}] 列表，空列表表示无历史
+        """
+        turn = await self.get_latest_turn(thread_id)
+        if not turn or not turn.messages_history:
+            return []
+        return turn.messages_history.get("messages", [])
+
+    async def flush(self) -> None:
+        """Flush 当前 session（不 commit）"""
+        await self.db.flush()
+
     async def commit(self) -> None:
         """提交事务"""
         await self.db.commit()

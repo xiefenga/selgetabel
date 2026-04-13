@@ -34,10 +34,32 @@ class OpenAIProvider(LLMProvider):
             params["response_format"] = request.response_format
         if extra_headers:
             params["extra_headers"] = extra_headers
+        if request.tools:
+            params["tools"] = request.tools
 
         response = self.client.chat.completions.create(**params)
-        content = response.choices[0].message.content or ""
-        return LLMResponse(content=content.strip(), raw=response, usage=getattr(response, "usage", None))
+        message = response.choices[0].message
+        content = message.content or ""
+
+        # 检查是否发生了工具调用
+        raw_tool_calls = getattr(message, "tool_calls", None) or []
+        tool_calls = []
+        for tc in raw_tool_calls:
+            # tc 是 ChatCompletionMessageToolCall 类型
+            func = getattr(tc, "function", None)
+            if func:
+                tool_calls.append({
+                    "name": func.name or "",
+                    "args": func.arguments or "{}",
+                    "id": tc.id or "",
+                })
+
+        return LLMResponse(
+            content=content.strip(),
+            raw=response,
+            usage=getattr(response, "usage", None),
+            tool_calls=tool_calls if tool_calls else None,
+        )
 
     def stream(self, request: LLMRequest) -> Generator[LLMStreamChunk, None, None]:
         extra_params = request.extra_params or {}

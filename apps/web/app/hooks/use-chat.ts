@@ -9,16 +9,14 @@ import type {
   AssistantMessage,
   UserMessage,
   UserMessageAttachment,
-  StepName,
-  SessionEventData,
-  StepEventData,
-  ErrorEventData,
   StreamingStepRecord,
   RunningStepRecord,
   DoneStepRecord,
   ErrorStepRecord,
   ExportStepOutput,
   OutputFileInfo,
+  StepName,
+  StepRecord,
 } from '~/components/llm-chat/message-list/types';
 import { useAuthStore } from '~/stores/auth';
 
@@ -31,25 +29,52 @@ export interface InputType {
 }
 
 
-/** 步骤名称列表（用于验证） */
-// use-chat.ts 顶部附近
-const STEP_NAMES: StepName[] = ["load", "generate", "validate", "execute", "export", "chat", "analyze"];
+// ========== 新架构 SSE 事件格式类型 ==========
 
-/** 判断是否为有效的步骤名称 */
-function isStepName(step: string): step is StepName {
-  return STEP_NAMES.includes(step as StepName);
+interface ToolStartData {
+  tool: string;
+  args: Record<string, unknown>;
+}
+
+interface ToolStreamData {
+  tool: string;
+  delta: string;
+  partial: string;
+}
+
+interface ToolEndData {
+  tool: string;
+  observation: string;
+  data?: Record<string, unknown>;
+}
+
+interface AgentEndData {
+  response: string;
+}
+
+interface SessionData {
+  thread_id: string;
+  is_new: boolean;
 }
 
 interface UseChatOptions {
   onStart?: () => void;
   initialMessages?: ChatMessage[];
-  onSessionCreated?: (data: SessionEventData) => void;
+  onSessionCreated?: (data: { thread_id: string; is_new: boolean }) => void;
   /** export 步骤完成时的回调，返回输出文件列表 */
   onExportSuccess?: (outputFiles: OutputFileInfo[]) => void;
 }
 
+/** 在数组中反向查找满足条件的元素的索引 */
+function findLastIndex<T>(arr: T[], predicate: (el: T) => boolean): number {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (predicate(arr[i])) return i;
+  }
+  return -1;
+}
+
 export const useChat = ({ onStart, initialMessages, onSessionCreated, onExportSuccess }: UseChatOptions) => {
-  const [messages, updateMessages] = useImmer<ChatMessage[]>(initialMessages || []);
+  const [messages, updateMessages] = useImmer<AssistantMessage[]>(initialMessages as AssistantMessage[] || []);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const abortRef = useRef<(() => void) | null>(null);
@@ -90,11 +115,10 @@ export const useChat = ({ onStart, initialMessages, onSessionCreated, onExportSu
       role: "assistant",
       steps: [],
       status: 'pending',
-      completed: dayjs().unix()
     };
 
     updateMessages(draft => {
-      draft.push(userMessage, assistantMessage)
+      draft.push(userMessage as unknown as AssistantMessage, assistantMessage)
     })
 
     setIsProcessing(true);
@@ -108,141 +132,177 @@ export const useChat = ({ onStart, initialMessages, onSessionCreated, onExportSu
       },
       events: {
         onStart,
-        onMessage: (event, data) => {
-          // 处理 session 事件 - 会话元数据
+
+        onMessage: (event, rawData) => {
+          const data = rawData as unknown as Record<string, unknown>;
+
+          // ─── session 事件：会话元数据 ───
           if (event === "session") {
-            const sessionData = data as SessionEventData;
-            onSessionCreated?.(sessionData);
+            const sessionData = data as unknown as SessionData;
+            onSessionCreated?.({
+              thread_id: sessionData.thread_id,
+              is_new: sessionData.is_new,
+            });
             return;
           }
 
-          // 处理 error 事件 - 会话级/系统级错误
+          // ─── error 事件：系统/会话级错误 ───
           if (event === "error") {
-            const errorData = data as ErrorEventData;
             updateMessages(draft => {
               const lastMessage = draft[draft.length - 1];
               if (lastMessage && lastMessage.role === "assistant") {
                 lastMessage.status = 'error';
-                lastMessage.error = errorData.message;
+                lastMessage.error = String(data.message || 'Unknown error');
               }
             });
             return;
           }
 
-          // 处理默认 message 事件 - 步骤状态更新
-          const stepData = data as StepEventData;
-          const { step, status, delta, output, error } = stepData;
+          // ─── tool_start 事件：工具开始调用 ───
+          if (event === "tool_start") {
+            const toolData = data as unknown as ToolStartData;
+            const toolName: string = toolData.tool || "unknown";
 
-          // 处理 complete 特殊步骤
-          if (step === "complete" && status === "done") {
+            updateMessages(draft => {
+              const lastMessage = draft[draft.length - 1];
+              if (!lastMessage || lastMessage.role !== "assistant") return;
+
+              lastMessage.status = 'streaming';
+
+              // 避免重复创建同工具的 running 步骤
+              const hasRunning = lastMessage.steps.some(
+                (s) =>
+                  s.step === toolName && s.status === "running"
+              );
+              if (hasRunning) return;
+
+              const newStep: RunningStepRecord<StepName> = {
+                step: toolName as StepName,
+                status: "running",
+                started_at: new Date().toISOString(),
+              };
+              lastMessage.steps.push(newStep as AssistantMessage["steps"][number]);
+            });
+            return;
+          }
+
+          // ─── tool_stream 事件：工具输出流式片段 ───
+          if (event === "tool_stream") {
+            const streamData = data as unknown as ToolStreamData;
+            const toolName: string = streamData.tool || "unknown";
+            const delta: string = streamData.delta || "";
+
+            updateMessages(draft => {
+              const lastMessage = draft[draft.length - 1];
+              if (!lastMessage || lastMessage.role !== "assistant") return;
+
+              lastMessage.status = 'streaming';
+
+              // 找到当前工具的 running/streaming 步骤（反向找最后一个）
+              const stepIndex = findLastIndex(
+                lastMessage.steps,
+                (s) => s.step === toolName && (s.status === "running" || s.status === "streaming")
+              );
+
+              if (stepIndex >= 0) {
+                const existingStep = lastMessage.steps[stepIndex];
+                const streamingStep: StreamingStepRecord<StepName> = {
+                  ...(existingStep as StreamingStepRecord<StepName>),
+                  status: "streaming",
+                  streamContent: (existingStep as StreamingStepRecord<StepName>).streamContent
+                    ? (existingStep as StreamingStepRecord<StepName>).streamContent + delta
+                    : delta,
+                };
+                lastMessage.steps[stepIndex] = streamingStep as AssistantMessage["steps"][number];
+              } else {
+                // 无 running 步骤时，创建一个 streaming 步骤
+                const streamingStep: StreamingStepRecord<StepName> = {
+                  step: toolName as StepName,
+                  status: "streaming",
+                  started_at: new Date().toISOString(),
+                  streamContent: delta,
+                };
+                lastMessage.steps.push(streamingStep as AssistantMessage["steps"][number]);
+              }
+            });
+            return;
+          }
+
+          // ─── tool_end 事件：工具执行完成 ───
+          if (event === "tool_end") {
+            const endData = data as unknown as ToolEndData;
+            const toolName: string = endData.tool || "unknown";
+            const observation: string = endData.observation || "";
+
+            updateMessages(draft => {
+              const lastMessage = draft[draft.length - 1];
+              if (!lastMessage || lastMessage.role !== "assistant") return;
+
+              // 找到当前工具的 running/streaming 步骤
+              const stepIndex = findLastIndex(
+                lastMessage.steps,
+                (s) => s.step === toolName && (s.status === "running" || s.status === "streaming")
+              );
+
+              if (stepIndex >= 0) {
+                const existingStep = lastMessage.steps[stepIndex] as StreamingStepRecord<StepName>;
+                const doneStep: DoneStepRecord<StepName> = {
+                  step: toolName as StepName,
+                  status: "done",
+                  started_at: existingStep.started_at,
+                  completed_at: new Date().toISOString(),
+                  output: (observation || "") as unknown as DoneStepRecord<StepName>["output"],
+                };
+                lastMessage.steps[stepIndex] = doneStep as AssistantMessage["steps"][number];
+              } else {
+                // 没有对应步骤时，创建一个 done 步骤
+                const doneStep: DoneStepRecord<StepName> = {
+                  step: toolName as StepName,
+                  status: "done",
+                  started_at: new Date().toISOString(),
+                  completed_at: new Date().toISOString(),
+                  output: (observation || "") as unknown as DoneStepRecord<StepName>["output"],
+                };
+                lastMessage.steps.push(doneStep as AssistantMessage["steps"][number]);
+              }
+
+              // export_excel 工具完成后触发回调
+              if (toolName === "export_excel" && endData.data) {
+                const exportOutput = endData.data as unknown as ExportStepOutput;
+                if (exportOutput.output_files?.length > 0) {
+                  onExportSuccess?.(exportOutput.output_files);
+                }
+              }
+            });
+            return;
+          }
+
+          // ─── agent_end 事件：Agent 推理完成 ───
+          if (event === "agent_end") {
+            updateMessages(draft => {
+              const lastMessage = draft[draft.length - 1];
+              if (!lastMessage || lastMessage.role !== "assistant") return;
+              if (lastMessage.status !== 'error') {
+                lastMessage.status = 'done';
+              }
+            });
+            return;
+          }
+
+          // ─── complete 事件：SSE 流结束 ───
+          if (event === "complete") {
             updateMessages(draft => {
               const lastMessage = draft[draft.length - 1];
               if (lastMessage && lastMessage.role === "assistant") {
-                lastMessage.status = 'done';
-                lastMessage.completed = dayjs().unix();
+                if (lastMessage.status !== 'error') {
+                  lastMessage.status = 'done';
+                }
               }
             });
             return;
           }
-
-          // export 步骤完成时触发回调
-          if (step === 'export' && status === 'done' && output) {
-            const exportOutput = output as ExportStepOutput;
-            if (exportOutput.output_files?.length > 0) {
-              onExportSuccess?.(exportOutput.output_files);
-            }
-          }
-
-          // 验证步骤名称
-          if (!isStepName(step)) {
-            return;
-          }
-
-          updateMessages(draft => {
-            const lastMessage = draft[draft.length - 1];
-            if (!lastMessage || lastMessage.role !== "assistant") return;
-
-            const assistantMsg = lastMessage as AssistantMessage;
-            assistantMsg.status = 'streaming';
-
-            // 查找当前步骤的最后一条记录（使用 reduce 替代 findLastIndex）
-            const existingStepIndex = assistantMsg.steps.reduce<number>(
-              (lastIndex, s, idx) => (s.step === step ? idx : lastIndex),
-              -1
-            );
-
-            switch (status) {
-              case "running": {
-                // 新步骤开始
-                const newStep: RunningStepRecord = {
-                  step,
-                  status: "running",
-                  started_at: new Date().toISOString(),
-                };
-                assistantMsg.steps.push(newStep);
-                break;
-              }
-
-              case "streaming": {
-                // 流式输出
-                if (existingStepIndex >= 0) {
-                  const existingStep = assistantMsg.steps[existingStepIndex];
-                  // 转换为 streaming 状态并累积内容
-                  const streamingStep: StreamingStepRecord = {
-                    ...existingStep,
-                    status: "streaming",
-                    streamContent: (existingStep as StreamingStepRecord).streamContent
-                      ? (existingStep as StreamingStepRecord).streamContent + (delta || "")
-                      : (delta || ""),
-                  };
-                  assistantMsg.steps[existingStepIndex] = streamingStep;
-                }
-                break;
-              }
-
-              case "done": {
-                // 步骤完成
-                if (existingStepIndex >= 0) {
-                  const existingStep = assistantMsg.steps[existingStepIndex];
-                  
-                  // 把流式积攒的文本取出来
-                  const finalContent = (existingStep as any).streamContent;
-
-                  const doneStep: DoneStepRecord = {
-                    ...existingStep, // 💡 继承之前的所有属性，包括 streamContent，防止组件报错
-                    step,
-                    status: "done" as const, // 断言为字面量类型
-                    started_at: existingStep.started_at,
-                    completed_at: new Date().toISOString(),
-                    // 💡 如果后端有返回 output 就用后端的，如果没有，就把打字机的结果存进 output
-                    output: (output !== undefined ? output : finalContent) as DoneStepRecord["output"],
-                  };
-                  
-                  assistantMsg.steps[existingStepIndex] = doneStep;
-                }
-                break;
-              }
-
-              case "error": {
-                // 步骤失败
-                if (existingStepIndex >= 0) {
-                  const existingStep = assistantMsg.steps[existingStepIndex];
-                  const errorStep: ErrorStepRecord = {
-                    step,
-                    status: "error",
-                    started_at: existingStep.started_at,
-                    completed_at: new Date().toISOString(),
-                    error: error || { code: "UNKNOWN", message: "未知错误" },
-                  };
-                  assistantMsg.steps[existingStepIndex] = errorStep;
-                  assistantMsg.status = 'error';
-                  assistantMsg.error = error?.message;
-                }
-                break;
-              }
-            }
-          });
         },
+
         onError: (err: Error) => {
           const message = err.message;
           updateMessages((draft) => {
@@ -253,14 +313,15 @@ export const useChat = ({ onStart, initialMessages, onSessionCreated, onExportSu
             }
           })
         },
+
         onFinally: () => {
           setIsProcessing(false);
         },
+
         onSuccess: () => {
           updateMessages((draft) => {
             const lastMessage = draft[draft.length - 1]
             if (lastMessage && lastMessage.role === "assistant") {
-              // 只有不是 error 状态时才设置为 done
               if (lastMessage.status !== 'error') {
                 lastMessage.status = 'done'
               }

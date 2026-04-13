@@ -12,7 +12,8 @@ import type {
   GenerateStepOutput,
   ValidateStepOutput,
   ExecuteStepOutput,
-  ExportStepOutput
+  ExportStepOutput,
+  ChatStepOutput,
 } from "~/components/llm-chat/message-list/types"
 
 /** 步骤配置 */
@@ -47,6 +48,12 @@ const STEP_CONFIG: Record<StepName, { label: string; icon: React.ReactNode }> = 
   },
 }
 
+/** 未知工具的默认配置 */
+const DEFAULT_STEP_CONFIG = {
+  label: "处理中",
+  icon: <Brain className="w-4 h-4" />,
+}
+
 /** 步骤名称列表 */
 export const STEP_NAMES: StepName[] = ["load", "generate", "validate", "execute", "export"]
 
@@ -61,7 +68,7 @@ export const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => 
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   const stepName = record.step
-  const config = STEP_CONFIG[stepName]
+  const config = STEP_CONFIG[stepName] ?? DEFAULT_STEP_CONFIG
   const status = record.status
 
   const isRunning = status === "running"
@@ -162,6 +169,23 @@ export const StepItem = ({ record, defaultExpanded = false }: StepItemProps) => 
     if (stepName === "export") {
       // 导出成功不显示内容，处理结果在后面单独显示
       return null
+    }
+
+    // 通用文本输出（适用于 chat、hello 等文本回复类步骤）
+    const output = doneRecord.output as unknown as ChatStepOutput
+    if (typeof output === "string" && output) {
+      return (
+        <div className="text-sm text-gray-600 leading-relaxed">
+          {output}
+        </div>
+      )
+    }
+    if (typeof output === "object" && output !== null) {
+      return (
+        <div className="text-sm text-gray-600">
+          {JSON.stringify(output)}
+        </div>
+      )
     }
 
     return null

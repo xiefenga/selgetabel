@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.engine.llm_client import LLMClient
 from app.services.llm_config import load_stage_configs, LLMConfigError
 from app.core.database import AsyncSessionLocal
 from app.core.database import get_db
@@ -25,21 +24,6 @@ from app.models.role import Permission
 
 # HTTP Bearer Token 认证（作为备用方案，优先使用 cookie）
 security = HTTPBearer(auto_error=False)
-
-
-async def get_llm_client(db: Optional[AsyncSession] = None) -> LLMClient:
-    """获取 LLM 客户端（从数据库加载配置）"""
-    try:
-        if db is None:
-            async with AsyncSessionLocal() as session:
-                stage_configs = await load_stage_configs(session)
-        else:
-            stage_configs = await load_stage_configs(db)
-        return LLMClient(stage_configs=stage_configs)
-    except LLMConfigError as e:
-        raise HTTPException(status_code=500, detail=f"LLM 配置错误: {e}")
-    except ValueError as e:
-        raise HTTPException(status_code=500, detail=f"LLM 初始化失败: {e}")
 
 
 async def get_current_user(

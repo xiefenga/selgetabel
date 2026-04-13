@@ -39,6 +39,7 @@ class LLMRequest:
     max_tokens: Optional[int] = None
     response_format: Optional[Dict[str, Any]] = None
     extra_params: Optional[Dict[str, Any]] = None
+    tools: Optional[List[Dict[str, Any]]] = None
 
 
 @dataclass
@@ -46,6 +47,7 @@ class LLMResponse:
     content: str
     raw: Optional[Any] = None
     usage: Optional[Dict[str, Any]] = None
+    tool_calls: Optional[List[Dict[str, Any]]] = None
 
 
 @dataclass
